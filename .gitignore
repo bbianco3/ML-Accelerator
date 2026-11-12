@@ -1,1 +1,28 @@
-ews_run_artifacts
+# build outputs (simulators, run logs, waveforms, synthesis results)
+build/
+ews_run_artifacts/
+
+# tool droppings if someone runs vcs/dc_shell/verdi by hand in the tree
+/csrc/
+simv
+simv.daidir/
+ucli.key
+vc_hdrs.h
+*.fsdb
+*.vcd
+*.vpd
+novas*
+verdiLog/
+command.log
+lc_command.log
+lc_output.txt
+default.svf
+filenames.log
+work/
+DVEfiles/
+
+# downloaded / generated PDK files (hw/synth/pdk/asap7_setup.sh)
+/pdk/
+
+# local copy of a complete reference design (make ... RTL_DIR=hw/rtl_ref); not distributed
+/hw/rtl_ref/

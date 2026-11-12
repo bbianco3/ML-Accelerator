@@ -1,0 +1,161 @@
+# SRAM macros and the scratchpad
+
+Each compute core has a private scratchpad SRAM (`SPAD_KB` KiB at
+`0x2000_0000`, see [architecture.md](architecture.md#scratchpad)). This page
+covers how that SRAM is modelled: the generator, the macro catalog, the RTL
+wrapper, and how its area, timing and power reach the synthesis reports.
+
+```sh
+make sram                          # generate + compile the macro catalog (seconds, once)
+make synth                         # uses the macros automatically (SRAM=macro)
+make synth SRAM=flops              # same design with flip-flop scratchpads, to compare
+make regress SIM_SRAM=macro        # simulate the exact macro structure DC sees
+hw/sram/sram_gen.py --print 1024x64   # model numbers for any size, no files written
+```
+
+## Pieces
+
+| File | Role |
+|---|---|
+| [`hw/sram/sram_gen.py`](../hw/sram/sram_gen.py) | the generator: analytical model, Liberty (`.lib`) and Verilog writer |
+| [`hw/sram/sram_setup.sh`](../hw/sram/sram_setup.sh) | `make sram`: runs the generator for the catalog, compiles `.lib` to `.db` with `lc_shell` |
+| `hw/rtl/accel_sram_1rw.sv` | the only SRAM the RTL uses: behavioral array, or a tiling of macros |
+| `hw/rtl/accel_spad.sv` | scratchpad + address router built on the wrapper |
+| `pdk/asap7/sram/` (generated, git-ignored) | `lib/*.lib`, `db/<CORNER>/*.db`, `verilog/*.v`, `datasheet_<CORNER>.md` |
+
+## The macro
+
+Every generated macro `sram1rw_<DEPTH>x<WIDTH>` is a single-port synchronous
+SRAM with the same pins as OpenROAD's FakeRAM macros:
+
+| Pin | Dir | Meaning |
+|---|---|---|
+| `clk` | in | rising-edge clock |
+| `ce_in` | in | 1 = access this cycle |
+| `we_in` | in | 1 = write, 0 = read |
+| `addr_in[AW-1:0]` | in | word address |
+| `wd_in[W-1:0]`, `w_mask_in[W-1:0]` | in | write data, per-bit write enable |
+| `rd_out[W-1:0]` | out | read data, valid after the clock edge of a read |
+
+The Liberty model gives DC:
+
+* **area** (um^2): `cell area`, reported as *Macro/Black Box Area* in
+  `qor.rpt` and per instance in `reports/sram.rpt`,
+* **timing** (ps): clock-to-`rd_out` access time (load dependent), setup and
+  hold of every input, minimum clock period,
+* **power**: energy per read, per write and per idle clock edge as
+  `internal_power` on `clk` (conditioned on `ce_in`/`we_in`), and leakage
+  (pW), all reported by `report_power`.
+
+## The model
+
+`sram_gen.py` models a 6T SRAM array plus periphery with a handful of
+constants at the top of the file (ASAP7-like 7 nm, 0.7 V, 25 C):
+
+* **Geometry.** Bit cell 0.216 x 0.125 um (0.027 um^2, a 7 nm-class
+  high-density cell). The array is folded with a column mux of 1, 2, 4 or 8
+  to be as square as possible. Add a row-decoder strip on the side and a
+  column-periphery strip (precharge, mux, sense amps, write drivers) below.
+* **Timing.** Clock buffering + decoder (per address bit) + word-line RC
+  (per column) + bit-line discharge (per row) + sense + column mux + output
+  driver. Min cycle adds precharge.
+* **Energy.** A fixed part, per-column word-line/bit-line energy that grows
+  with bit-line length, plus per-bit sense (read) or write-driver (write)
+  energy.
+* **Leakage.** Per bit cell, per column, per row, plus a fixed part.
+* **Corners.** `--corner SS/FF` (set from `ASAP7_CORNER`) scale delay, energy and
+  leakage and use the ASAP7 operating-condition names.
+
+Generated catalog, TT corner (`pdk/asap7/sram/datasheet_TT.md`):
+
+| Macro | Col mux | W x H (um) | Area (um^2) | um^2/bit | Access (ps) | Min cycle (ps) | Read (pJ) | Write (pJ) | Leakage (uW) |
+|---|---|---|---|---|---|---|---|---|---|
+| sram1rw_64x32 | 1 | 12.3 x 12.0 | 147.7 | 0.0721 | 147 | 190 | 0.53 | 0.73 | 0.046 |
+| sram1rw_64x64 | 1 | 19.2 x 12.0 | 230.7 | 0.0563 | 151 | 194 | 0.92 | 1.30 | 0.088 |
+| sram1rw_64x128 | 1 | 33.0 x 12.0 | 396.6 | 0.0484 | 159 | 201 | 1.69 | 2.45 | 0.173 |
+| sram1rw_128x32 | 2 | 19.2 x 12.6 | 242.2 | 0.0591 | 159 | 202 | 0.73 | 0.92 | 0.088 |
+| sram1rw_128x64 | 1 | 19.6 x 20.0 | 392.5 | 0.0479 | 179 | 235 | 1.05 | 1.43 | 0.172 |
+| sram1rw_128x128 | 1 | 33.4 x 20.0 | 669.0 | 0.0408 | 187 | 242 | 1.94 | 2.71 | 0.338 |
+| sram1rw_256x32 | 2 | 19.6 x 20.6 | 404.3 | 0.0493 | 187 | 243 | 0.85 | 1.05 | 0.172 |
+| sram1rw_256x64 | 2 | 33.4 x 20.6 | 689.0 | 0.0421 | 195 | 250 | 1.56 | 1.94 | 0.338 |
+| sram1rw_256x128 | 1 | 33.8 x 36.0 | 1218.5 | 0.0372 | 234 | 315 | 2.45 | 3.22 | 0.669 |
+| sram1rw_512x32 | 4 | 33.4 x 21.2 | 709.1 | 0.0433 | 203 | 258 | 1.37 | 1.56 | 0.338 |
+| sram1rw_512x64 | 2 | 33.8 x 36.6 | 1238.8 | 0.0378 | 242 | 323 | 2.07 | 2.45 | 0.669 |
+| sram1rw_512x128 | 2 | 61.5 x 36.6 | 2250.8 | 0.0343 | 258 | 339 | 3.99 | 4.76 | 1.329 |
+
+Compare: a flip-flop in ASAP7 is 0.29 um^2 and leaks about 200 pW, before
+any read multiplexer. The larger macros are about 10x denser and 10x less
+leaky per bit. Small macros pay a lot for their periphery (0.072 um^2/bit
+at 64 x 32), which is why real designs use few, large SRAMs.
+
+> **These are model numbers, not silicon.** The constants are chosen to land
+> near published 7 nm-class SRAM figures. Use them to compare designs with
+> each other (wider vs. deeper, macros vs. flops, how many banks), not as
+> absolute predictions. To calibrate against something else, edit the
+> constants at the top of `sram_gen.py`; `make sram` regenerates.
+
+## The wrapper: from any size to catalog macros
+
+`accel_sram_1rw #(DEPTH, WIDTH)` is what the RTL instantiates. With
+`ACCEL_SRAM_MACROS` defined (synthesis, or `SIM_SRAM=macro`):
+
+* macro width `MW = min(WIDTH, 128)`, macro depth `MD = min(DEPTH, 512)`,
+* `WIDTH/MW` macros side by side form one bank. All of them share address
+  and enables, and each gets its slice of data and mask,
+* `DEPTH/MD` banks: the top address bits select the bank (only that bank's
+  `ce_in` is raised), and a registered bank index picks the read data in
+  the next cycle.
+
+Example: the default scratchpad is 16 KiB of 256-bit words, so `DEPTH = 512`
+and `WIDTH = 256`: one bank of two `sram1rw_512x128`. With `SPAD_KB=64` and
+`VLEN=512` (512-bit words, depth 1024) it is 2 banks x 4 macros.
+
+If `MW`/`MD` are not in the catalog (e.g. a 96-bit or 32-word memory), the
+wrapper silently uses the behavioral array, which DC then builds from
+flip-flops. Check `reports/sram.rpt`: it lists every macro instance and is
+empty when none were used.
+
+## Adding a macro size
+
+1. Add the depth/width to `CATALOG_DEPTHS` / `CATALOG_WIDTHS` in
+   `sram_gen.py`.
+2. Add a matching `else if (MD == .. && MW == ..)` line to the generate
+   chain in `accel_sram_1rw.sv` (and adjust the `MW`/`MD` rule if needed).
+3. `make sram` (rebuilds when the generator changes), then
+   `make regress SIM_SRAM=macro` and `make synth`.
+
+## Synthesis results
+
+ASAP7 RVT TT, 2.5 ns. Small configuration (`VLEN=64 MAT_DIM=4 MXU_ROWS=4
+NUM_TREGS=2 NUM_ACCS=1 HBM_DATA_W=64 ICACHE_LINES=4`), 2 cores, 4 KiB
+scratchpad per core (one `sram1rw_512x64` each):
+
+| Scratchpad as | Total area (um^2) | of which scratchpads | Worst slack | Power (mW) | Compile time |
+|---|---|---|---|---|---|
+| SRAM macros (`SRAM=macro`) | 19,010 | 2,614 (14%) | +0.01 ps (met) | 5.4 | 29 min |
+| flip-flops (`SRAM=flops`) | 54,544 | 38,174 (70%) | +0.01 ps (met) | 37.5 | 70 min |
+
+The same 8 KiB of storage costs 15x the area as flip-flops (each 4 KiB
+scratchpad: 1,307 um^2 including its router vs. 19,087 um^2), makes the
+whole accelerator 2.9x larger, and more than doubles compile time. Power is
+DC's estimate with default switching activity (no simulation data), so
+treat it as a relative number. Most of the flop scratchpad's 16 mW per core
+is clock power: 32 K flip-flops see every clock edge (there is no clock
+gating), while a macro only spends energy on the edges where `ce_in` is
+high. Leakage: 19 uW total with macros vs. 57 uW with flops.
+
+## Using the scratchpad well
+
+* Fetch data that is used more than once from HBM **once**, into the
+  scratchpad (`mld` from HBM, `mst` to the scratchpad). Then reuse it at 2
+  cycles per tile row instead of ~45.
+* Store tiles there in whatever layout the next step wants. Blocked (each
+  tile contiguous, stride `MAT_DIM*2`) is natural, and `mst.t`/`mld.t`
+  transpose on the way.
+* Use it for epilogues: `msta` an accumulator into the scratchpad, apply
+  activation functions with vector instructions there, then copy the
+  finished tile to HBM.
+* Each core's scratchpad is private. To share data between cores, write it
+  to HBM and `barrier`.
+* [`sw/tests/gemm_tiled`](../sw/tests/gemm_tiled/kernel.S) does all of this
+  and prints the speed-up.

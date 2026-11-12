@@ -1,24 +1,46 @@
 #!/bin/bash
+#------------------------------------------------------------------------------
+# run_on_ews.sh -- run a make target on a remote machine that has the Synopsys
+# tools (e.g. UIUC EWS) and copy the results back.
+#
+#   ./run_on_ews.sh                       # make run TEST=hello
+#   ./run_on_ews.sh run TEST=matmul       # any make arguments
+#   ./run_on_ews.sh regress
+#   ./run_on_ews.sh run TEST=gemm WAVES=1 # waveforms come back too
+#
+# The repo is rsync'ed to $REMOTE_DIR, `source setup_env.sh && make <args>`
+# runs there, and build/runs + build/synth reports are copied back into
+# ./ews_run_artifacts/. Set EWS_HOST (or edit the default below) first.
+# If you are already logged in on EWS, just run make directly instead.
+#------------------------------------------------------------------------------
+set -euo pipefail
 
-#------------------------------------------------------------------------
-# run_on_ews.sh: rsync's the current directory with a server that has
-#                the Synopsys toolchain installed, runs code there, then
-#                copies back the artifacts.
-#                I find this slightly easier than using Emacs TRAMP,
-#                especially for viewing waves (X forwarding/VNC is slow).
-#------------------------------------------------------------------------
+EWS_HOST="${EWS_HOST:-netid@linux.ews.illinois.edu}"
+REMOTE_DIR="${REMOTE_DIR:-~/sigarch-ml-accelerator}"
+OUT_DIR="./ews_run_artifacts"
 
-remote_server="netid@linux.ews.illinois.edu"
-remote_directory="~/sigarch"
-current_project="hello-world"
-output_directory="./ews_run_artifacts"
+if [[ "$EWS_HOST" == netid@* ]]; then
+  echo "run_on_ews.sh: set EWS_HOST=<your-netid>@linux.ews.illinois.edu (or edit this script)" >&2
+  exit 1
+fi
 
-mkdir -p $output_directory
+MAKE_ARGS=("$@")
+[ ${#MAKE_ARGS[@]} -eq 0 ] && MAKE_ARGS=(run TEST=hello)
 
-rsync -avz "./$current_project" "$remote_server:$remote_directory" --exclude doc --exclude ews_run_artifacts --exclude .git
-ssh "$remote_server" ". /etc/profile && source ~/setup_synopsys_toolchain.sh && cd $remote_directory/$current_project && make run"
-rsync -avz "$remote_server:$remote_directory/$current_project/sim/dump.vcd" "$output_directory"
-rsync -avz "$remote_server:$remote_directory/$current_project/sim/compile.log" "$output_directory"
-rsync -avz "$remote_server:$remote_directory/$current_project/sim/simulation.log" "$output_directory"
+cd "$(dirname "$0")"
+mkdir -p "$OUT_DIR"
 
-echo "run_on_ews.sh: exiting"
+rsync -az --delete --exclude .git --exclude build --exclude ews_run_artifacts --exclude pdk \
+  ./ "$EWS_HOST:$REMOTE_DIR/"
+
+status=0
+ssh "$EWS_HOST" "bash -lc 'cd $REMOTE_DIR && source setup_env.sh >/dev/null && make ${MAKE_ARGS[*]}'" || status=$?
+
+# Logs, waveforms and synthesis reports (whatever exists).
+rsync -az --prune-empty-dirs \
+  --include '*/' --include '*.log' --include '*.fsdb' --include '*.vcd' --include '*.rpt' \
+  --include '*.dis' --exclude '*' \
+  "$EWS_HOST:$REMOTE_DIR/build/" "$OUT_DIR/" || true
+
+echo "run_on_ews.sh: make exited with $status; artifacts in $OUT_DIR/"
+exit $status
