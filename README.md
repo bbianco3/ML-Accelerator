@@ -54,17 +54,20 @@ What you get:
 ```sh
 git clone <this repo> && cd sigarch-ml-accelerator-template
 source setup_env.sh            # VCS/Verdi/DC + RISC-V GCC
-make run TEST=vadd             # build kernel + host program + simulator, run
-make regress                   # all tests
+make unit                      # FP arithmetic functions vs. the C reference: passes
+make run TEST=host             # the simulated host CPU by itself: passes
+make run TEST=hello SIM_ARGS=+timeout=200000   # first milestone: fails until you write the RTL
 ```
 
-Expected output ends with:
+With the empty `accel_top` shell, `hello` ends with
 
 ```
-[host] vadd: 0 errors
-[tb] *** TEST PASSED ***
-PASS: vadd  (log: build/runs/v256_m16_t4_a2_r4_d256_i16_c2_s16/vadd/sim.log)
+[tb] *** TEST FAILED *** (timeout after 200000 cycles; raise with +timeout=N)
 ```
+
+because nothing answers the host on the control port. Your first goal is to
+make it end with `[tb] *** TEST PASSED ***`; then work up the milestones in
+[docs/project-guide.md](docs/project-guide.md) until `make regress` passes.
 
 More:
 
@@ -146,11 +149,15 @@ ACCEL_KERNEL(vadd_kernel)       // a0 = n, a1 = x, a2 = y, a3 = z
 
 ## Status
 
-All 14 system tests and the FP unit test pass for configurations from
+The repository ships without the accelerator RTL. With the reference
+design (not distributed) in place of the shell, all 14 system tests and the
+FP unit test pass for configurations from
 `VLEN=64, MAT_DIM=4, HBM_DATA_W=32` up to `VLEN=2048, MAT_DIM=64,
 HBM_DATA_W=1024`, with 1 to 8 cores, scratchpads from none to 64 KiB
 (behavioral and SRAM-macro models), and with and without random HBM
-back-pressure. The reference
-microarchitecture is intentionally simple and slow. See
+back-pressure, so the platform, software and tests are known to work
+together. Its synthesis results and timing bottlenecks are in
+[docs/synthesis.md](docs/synthesis.md#reference-results). The reference
+architecture is intentionally simple and slow: see
 [docs/architecture.md](docs/architecture.md#where-to-go-from-here) and
-[docs/project-guide.md](docs/project-guide.md) for what to improve.
+[docs/project-guide.md](docs/project-guide.md) for where to go.

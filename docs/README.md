@@ -2,7 +2,7 @@
 
 | Document | Read it when you want to... |
 |---|---|
-| [project-guide.md](project-guide.md) | plan a 3-week team project on this template |
+| [project-guide.md](project-guide.md) | plan the project: what is fixed, milestones from the empty shell to a scored design, optimization ideas |
 | [architecture.md](architecture.md) | understand the hardware blocks, execution model and performance |
 | [isa.md](isa.md) | look up an instruction, its encoding or the error codes |
 | [writing-kernels.md](writing-kernels.md) | write a kernel and a host program, and debug them |

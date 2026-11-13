@@ -35,11 +35,11 @@ endif
 SYN_DIR := $(BUILD)/synth/$(PDK_TAG)/$(HW_CFG)$(if $(filter flops,$(SRAM)),_flops)_$(CLK_PERIOD)ns
 
 .PHONY: synth asap7 sram limits score
-synth: $(PDK_DEP)
+synth: $(PDK_DEP) $(GEN_SRCS)
 	@command -v $(DC_SHELL) >/dev/null || { echo "ERROR: dc_shell not found -- did you 'source setup_env.sh'?"; exit 1; }
 	@mkdir -p $(SYN_DIR)/reports
 	cd $(SYN_DIR) && \
-	  ACCEL_RTL_DIR=$(RTL_DIR) CLK_PERIOD=$(CLK_PERIOD) PDK=$(PDK) SRAM=$(SRAM) \
+	  ACCEL_RTL_DIR=$(RTL_DIR) ACCEL_GEN_SRCS="$(GEN_SRCS)" CLK_PERIOD=$(CLK_PERIOD) PDK=$(PDK) SRAM=$(SRAM) \
 	  ASAP7_DIR=$(ASAP7_DIR) ASAP7_CORNER=$(ASAP7_CORNER) ASAP7_VT=$(ASAP7_VT) \
 	  VLEN=$(VLEN) MAT_DIM=$(MAT_DIM) NUM_TREGS=$(NUM_TREGS) NUM_ACCS=$(NUM_ACCS) \
 	  MXU_ROWS=$(MXU_ROWS) HBM_DATA_W=$(HBM_DATA_W) ICACHE_LINES=$(ICACHE_LINES) \

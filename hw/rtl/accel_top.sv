@@ -26,6 +26,12 @@
 //   m_axi_*        AXI4 master      -- HBM (or any memory) port, for
 //                                      instruction fetch and all data traffic
 //
+// Memories: instantiate accel_sram_1rw #(.DEPTH, .WIDTH) for anything bigger
+// than a few registers. The module is generated from the SRAM macro catalog
+// (hw/sram/sram_gen.py --wrapper -> build/gen/accel_sram_1rw.sv) and is added
+// to simulation and synthesis for you, so its area, timing and power are
+// those of real SRAM macros (docs/sram.md).
+//
 // accel_pkg.sv holds the instruction encodings, register offsets and error
 // codes that the software in sw/ uses; accel_fp_pkg.sv holds the bf16 / fp32
 // arithmetic functions that match the software reference model (bf16.h).

@@ -61,10 +61,10 @@ endif
 
 sim: $(SIMV)
 
-$(SIMV): $(RTL_SRCS) $(TB_SRCS) $(SIM_CDEPS) $(RTL_DIR)/filelist.f $(SRAM_V_DEP)
+$(SIMV): $(GEN_SRCS) $(RTL_SRCS) $(TB_SRCS) $(SIM_CDEPS) $(RTL_DIR)/filelist.f $(SRAM_V_DEP)
 	@command -v $(VCS) >/dev/null || { echo "ERROR: vcs not found -- did you 'source setup_env.sh'?"; exit 1; }
 	@mkdir -p $(SIM_DIR)
-	cd $(SIM_DIR) && $(VCS) $(VCS_FLAGS) $(HW_DEFINES) $(RTL_SRCS) $(SRAM_V_SRCS) $(TB_SRCS) $(SIM_CSRCS) \
+	cd $(SIM_DIR) && $(VCS) $(VCS_FLAGS) $(HW_DEFINES) $(GEN_SRCS) $(RTL_SRCS) $(SRAM_V_SRCS) $(TB_SRCS) $(SIM_CSRCS) \
 	    -o simv -l compile.log > /dev/null || { tail -40 $(SIM_DIR)/compile.log; exit 1; }
 	@echo "built $(SIMV)"
 
@@ -97,10 +97,10 @@ verdi:
 	cd $(RUN_DIR) && $(VERDI) -dbdir $(SIM_DIR)/simv.daidir -ssf waves.fsdb &
 
 # Lint the synthesizable RTL on its own (no testbench).
-lint:
+lint: $(GEN_SRCS)
 	@mkdir -p $(BUILD)/lint
 	cd $(BUILD)/lint && $(VCS) -full64 -sverilog +lint=all,noVCDE,noNS -top accel_top \
-	    $(RTL_SRCS) -l lint.log > /dev/null; \
+	    $(GEN_SRCS) $(RTL_SRCS) -l lint.log > /dev/null; \
 	grep -E "^(Error|Warning|Lint)-" -A4 lint.log || echo "lint: clean"
 
 #------------------------------------------------------------------------------

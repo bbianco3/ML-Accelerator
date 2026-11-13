@@ -40,6 +40,15 @@ FP_PIPE      ?= 1
 RTL_DIR ?= $(REPO)/hw/rtl
 override RTL_DIR := $(abspath $(RTL_DIR))
 
+# Generated RTL: the SRAM wrapper accel_sram_1rw (hw/sram/sram_gen.py
+# --wrapper). It is compiled in front of the files of filelist.f in
+# simulation, lint and synthesis, so a design can simply instantiate it.
+SRAM_WRAPPER := $(BUILD)/gen/accel_sram_1rw.sv
+GEN_SRCS     := $(SRAM_WRAPPER)
+
+$(SRAM_WRAPPER): $(REPO)/hw/sram/sram_gen.py
+	@python3 $< --wrapper $@
+
 # (A suffix for the units appears only when they differ from NUM_CORES, FP_PIPE=0
 # has none, and another RTL_DIR adds its directory name.)
 HW_CFG := v$(VLEN)_m$(MAT_DIM)_t$(NUM_TREGS)_a$(NUM_ACCS)_r$(MXU_ROWS)_d$(HBM_DATA_W)_i$(ICACHE_LINES)_c$(NUM_CORES)_s$(SPAD_KB)$(if $(filter-out $(NUM_CORES)x$(NUM_CORES),$(NUM_VPUS)x$(NUM_MXUS)),_u$(NUM_VPUS)x$(NUM_MXUS))$(if $(filter-out 0,$(FP_PIPE)),_p$(FP_PIPE))$(if $(filter-out $(REPO)/hw/rtl,$(RTL_DIR)),_$(notdir $(RTL_DIR)))

@@ -5,6 +5,7 @@
 # environment variables and runs dc_shell inside build/synth/<config>/:
 #
 #   ACCEL_RTL_DIR   path to hw/rtl (contains filelist.f)
+#   ACCEL_GEN_SRCS  generated RTL files to read before filelist.f (the SRAM wrapper)
 #   PDK             asap7 (default) | freepdk45 -> sources pdk/<PDK>.tcl
 #                   (ASAP7_DIR/ASAP7_CORNER/ASAP7_VT or STD_CELL_LIB, see there)
 #   CLK_PERIOD      clock period in ns, whatever the library unit (default 2.5)
@@ -82,7 +83,8 @@ suppress_message {VER-130 VER-318 ELAB-311}
 #------------------------------------------------------------------------------
 # Read RTL (same file list as simulation)
 #------------------------------------------------------------------------------
-set files {}
+# generated sources first (the SRAM wrapper), then the design's file list
+set files [split [string trim [env_or ACCEL_GEN_SRCS ""]]]
 set fh [open $rtl_dir/filelist.f r]
 foreach line [split [read $fh] "\n"] {
   set l [string trim $line]
