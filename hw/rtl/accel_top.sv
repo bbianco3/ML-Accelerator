@@ -1,5 +1,5 @@
 //-----------------------------------------------------------------------------
-// accel_top.sv
+// accel_top.sv 
 //-----------------------------------------------------------------------------
 // Top level of the ML accelerator. THIS IS AN EMPTY SHELL: it has the ports
 // the testbench and the synthesis flow expect and drives every output to its
@@ -119,22 +119,12 @@ module accel_top
   logic [7:0][31:0] args;
   logic [7:0]       cores;
 
-  // Run status from the cores. No cores yet (milestone 1): never busy,
-  // never finishes.
+  // Run status from the cores
   logic             busy;
   logic             end_valid, end_error;
   logic [7:0]       end_cause, end_core;
   logic [31:0]      end_pc, end_insn;
   logic [63:0]      instret;
-
-  assign busy      = 1'b0;
-  assign end_valid = 1'b0;
-  assign end_error = 1'b0;
-  assign end_cause = ERR_NONE;
-  assign end_core  = '0;
-  assign end_pc    = '0;
-  assign end_insn  = '0;
-  assign instret   = '0;
 
   accel_csr #(
     .VLEN(VLEN), .MAT_DIM(MAT_DIM), .NUM_TREGS(NUM_TREGS), .NUM_ACCS(NUM_ACCS),
@@ -156,24 +146,47 @@ module accel_top
     .instret_i(instret)
   );
 
-  // HBM port: no requests.
-  assign m_axi_awid    = '0;
-  assign m_axi_awaddr  = '0;
-  assign m_axi_awlen   = '0;
-  assign m_axi_awsize  = '0;
-  assign m_axi_awburst = 2'b01;   // INCR
-  assign m_axi_awvalid = 1'b0;
-  assign m_axi_wdata   = '0;
-  assign m_axi_wstrb   = '0;
-  assign m_axi_wlast   = 1'b0;
-  assign m_axi_wvalid  = 1'b0;
-  assign m_axi_bready  = 1'b0;
-  assign m_axi_arid    = '0;
-  assign m_axi_araddr  = '0;
-  assign m_axi_arlen   = '0;
-  assign m_axi_arsize  = '0;
-  assign m_axi_arburst = 2'b01;   // INCR
-  assign m_axi_arvalid = 1'b0;
-  assign m_axi_rready  = 1'b0;
+  //---------------------------------------------------------------------------
+  // Core 0 (milestone 2: a single core; more cores + an arbiter in milestone 6)
+  //---------------------------------------------------------------------------
+  logic                    mem_req_valid, mem_req_ready, mem_req_write;
+  logic [31:0]             mem_req_addr;
+  logic [HBM_DATA_W-1:0]   mem_req_wdata;
+  logic [HBM_DATA_W/8-1:0] mem_req_wstrb;
+  logic                    mem_resp_valid, mem_resp_err;
+  logic [HBM_DATA_W-1:0]   mem_resp_rdata;
+
+  accel_core #(
+    .CORE_ID(0), .VLEN(VLEN), .HBM_DATA_W(HBM_DATA_W),
+    .NUM_VPUS(NUM_VPUS), .NUM_MXUS(NUM_MXUS)
+  ) u_core0 (
+    .clk, .rst_n,
+    .start, .start_pc, .args, .ncores(cores),
+    .busy, .end_valid, .end_error, .end_cause, .end_pc, .end_insn, .instret,
+    .mem_req_valid, .mem_req_ready, .mem_req_write, .mem_req_addr,
+    .mem_req_wdata, .mem_req_wstrb,
+    .mem_resp_valid, .mem_resp_rdata, .mem_resp_err
+  );
+
+  assign end_core = 8'd0;
+
+  //---------------------------------------------------------------------------
+  // HBM port
+  //---------------------------------------------------------------------------
+  accel_axi_master #(
+    .HBM_ADDR_W(HBM_ADDR_W), .HBM_DATA_W(HBM_DATA_W), .HBM_ID_W(HBM_ID_W), .ID_VALUE(0)
+  ) u_axi (
+    .clk, .rst_n,
+    .req_valid(mem_req_valid), .req_ready(mem_req_ready), .req_write(mem_req_write),
+    .req_addr(mem_req_addr), .req_wdata(mem_req_wdata), .req_wstrb(mem_req_wstrb),
+    .resp_valid(mem_resp_valid), .resp_rdata(mem_resp_rdata), .resp_err(mem_resp_err),
+    .m_axi_awid, .m_axi_awaddr, .m_axi_awlen, .m_axi_awsize, .m_axi_awburst,
+    .m_axi_awvalid, .m_axi_awready,
+    .m_axi_wdata, .m_axi_wstrb, .m_axi_wlast, .m_axi_wvalid, .m_axi_wready,
+    .m_axi_bid, .m_axi_bresp, .m_axi_bvalid, .m_axi_bready,
+    .m_axi_arid, .m_axi_araddr, .m_axi_arlen, .m_axi_arsize, .m_axi_arburst,
+    .m_axi_arvalid, .m_axi_arready,
+    .m_axi_rid, .m_axi_rdata, .m_axi_rresp, .m_axi_rlast, .m_axi_rvalid, .m_axi_rready
+  );
 
 endmodule : accel_top
