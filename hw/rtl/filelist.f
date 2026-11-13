@@ -5,4 +5,5 @@
 # generated (hw/sram/sram_gen.py) and compiled automatically: do not list it.
 accel_pkg.sv
 accel_fp_pkg.sv
+accel_csr.sv
 accel_top.sv

@@ -112,20 +112,49 @@ module accel_top
 );
 
   //---------------------------------------------------------------------------
-  // TODO: your accelerator. Until then every output is idle.
+  // Host control/status registers (AXI4-Lite slave)
   //---------------------------------------------------------------------------
+  logic             start;
+  logic [31:0]      start_pc;
+  logic [7:0][31:0] args;
+  logic [7:0]       cores;
 
-  // Host control port: no request is ever accepted, no response ever sent.
-  assign s_axil_awready = 1'b0;
-  assign s_axil_wready  = 1'b0;
-  assign s_axil_bresp   = 2'b00;
-  assign s_axil_bvalid  = 1'b0;
-  assign s_axil_arready = 1'b0;
-  assign s_axil_rdata   = '0;
-  assign s_axil_rresp   = 2'b00;
-  assign s_axil_rvalid  = 1'b0;
+  // Run status from the cores. No cores yet (milestone 1): never busy,
+  // never finishes.
+  logic             busy;
+  logic             end_valid, end_error;
+  logic [7:0]       end_cause, end_core;
+  logic [31:0]      end_pc, end_insn;
+  logic [63:0]      instret;
 
-  assign irq = 1'b0;
+  assign busy      = 1'b0;
+  assign end_valid = 1'b0;
+  assign end_error = 1'b0;
+  assign end_cause = ERR_NONE;
+  assign end_core  = '0;
+  assign end_pc    = '0;
+  assign end_insn  = '0;
+  assign instret   = '0;
+
+  accel_csr #(
+    .VLEN(VLEN), .MAT_DIM(MAT_DIM), .NUM_TREGS(NUM_TREGS), .NUM_ACCS(NUM_ACCS),
+    .MXU_ROWS(MXU_ROWS), .HBM_DATA_W(HBM_DATA_W), .ICACHE_LINES(ICACHE_LINES),
+    .NUM_CORES(NUM_CORES), .NUM_VPUS(NUM_VPUS), .NUM_MXUS(NUM_MXUS),
+    .SPAD_KB(SPAD_KB)
+  ) u_csr (
+    .clk, .rst_n,
+    .s_axil_awaddr, .s_axil_awvalid, .s_axil_awready,
+    .s_axil_wdata,  .s_axil_wstrb,   .s_axil_wvalid,  .s_axil_wready,
+    .s_axil_bresp,  .s_axil_bvalid,  .s_axil_bready,
+    .s_axil_araddr, .s_axil_arvalid, .s_axil_arready,
+    .s_axil_rdata,  .s_axil_rresp,   .s_axil_rvalid,  .s_axil_rready,
+    .irq,
+    .start_o(start), .start_pc_o(start_pc), .args_o(args), .cores_o(cores),
+    .busy_i(busy),
+    .end_valid_i(end_valid), .end_error_i(end_error), .end_cause_i(end_cause),
+    .end_pc_i(end_pc), .end_insn_i(end_insn), .end_core_i(end_core),
+    .instret_i(instret)
+  );
 
   // HBM port: no requests.
   assign m_axi_awid    = '0;
