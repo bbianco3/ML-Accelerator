@@ -1,5 +1,5 @@
 //-----------------------------------------------------------------------------
-// accel_csr.sv
+// accel_csr.sv new
 //-----------------------------------------------------------------------------
 // Host control/status registers behind the AXI4-Lite slave port
 // (docs/memory-map.md, "Accelerator register map").
@@ -163,7 +163,10 @@ module accel_csr
         unique case (wr_addr)
           CSR_STATUS: begin                         // write-1-to-clear
             if (wr_data[STATUS_DONE])  done_q  <= 1'b0;
-            if (wr_data[STATUS_ERROR]) error_q <= 1'b0;
+            if (wr_data[STATUS_ERROR]) begin
+              error_q <= 1'b0;
+              cause_q <= ERR_NONE;                  // the cause goes with the error
+            end
           end
           CSR_IRQ_EN:   irq_en_q   <= wr_data[0];
           CSR_START_PC: start_pc_q <= wr_data;
