@@ -12,6 +12,8 @@
 //                                                 |                  csrr, vsetvl, vector arith)
 //                                                 +--> MEM -> MEM_WAIT -> FETCH
 //                                                 |                 (lw/sw..., vle16/vse16)
+//                                                 +--> VRED -> FETCH (vfredsum/vfredmax:
+//                                                 |                   vl cycles in the VPU)
 //                                                 +--> IDLE         (ecall, or a fault)
 //
 // Memory: the core talks to accel_axi_master one bus beat (HBM_DATA_W bits)
@@ -20,7 +22,6 @@
 // the data to/from the right byte offset and set the byte strobes.
 //
 // Not implemented yet (they raise ILLEGAL or are simply absent):
-//   * vector reductions and vmv.x.s / vmv.s.x       (milestone 4)
 //   * matrix unit, barrier                          (milestones 5, 6)
 //   * scratchpad (0x2000_0000 currently goes to HBM and gets a BUS error)
 //   * instruction cache: every fetch is an HBM read (~45 cycles)
@@ -82,7 +83,7 @@ module accel_core
   // Architectural state
   //===========================================================================
   typedef enum logic [2:0] {
-    S_IDLE, S_FETCH, S_FETCH_WAIT, S_EXEC, S_MEM, S_MEM_WAIT
+    S_IDLE, S_FETCH, S_FETCH_WAIT, S_EXEC, S_MEM, S_MEM_WAIT, S_VRED
   } state_e;
 
   state_e          state;
@@ -152,11 +153,11 @@ module accel_core
   //===========================================================================
   // Vector unit
   //===========================================================================
-  logic            vpu_ar_en, vpu_ld_en;
+  logic            vpu_ar_en, vpu_ld_en, vpu_sx_en, vpu_red_start, vpu_red_done;
   logic [VLEN-1:0] vpu_rd_data, vpu_ld_data;
 
   accel_vpu #(.VLEN(VLEN)) u_vpu (
-    .clk,
+    .clk, .rst_n,
     .vl,
     .ar_en     (vpu_ar_en),
     .ar_op     (funct7),
@@ -168,8 +169,19 @@ module accel_core
     .ld_en     (vpu_ld_en),
     .ld_vd     (rd),
     .ld_data   (vpu_ld_data),
-    .rd_idx    (rs2),                    // vse16: vs3 sits in the rs2 field
-    .rd_data   (vpu_rd_data)
+    .rd_idx    (rs2),                    // vse16: vs3 / vmv.x.s: vs2, both in rs2
+    .rd_data   (vpu_rd_data),
+    .sx_en     (vpu_sx_en),               // vmv.s.x
+    .sx_vd     (rd),
+    .sx_data   (rs1v[15:0]),
+    .red_start (vpu_red_start),           // vfredsum / vfredmax
+    .red_max   (funct7 == VOP_REDMAX),
+    .red_vf    (funct3 == VFORM_VF),
+    .red_vd    (rd),
+    .red_vs1   (rs1),
+    .red_vs2   (rs2),
+    .red_scalar(rs1v[15:0]),
+    .red_done  (vpu_red_done)
   );
 
   //===========================================================================
@@ -210,7 +222,7 @@ module accel_core
   logic [31:0]     ex_rd_val, ex_pc;
   logic            ex_vl_we;
   logic [VL_W-1:0] ex_vl_val;
-  logic            ex_vpu_ar;
+  logic            ex_vpu_ar, ex_vpu_sx, ex_vred;
 
   logic [31:0]     alu_b, alu_out;
   logic            br_taken;
@@ -254,6 +266,8 @@ module accel_core
     ex_vl_we   = 1'b0;
     ex_vl_val  = vl;
     ex_vpu_ar  = 1'b0;
+    ex_vpu_sx  = 1'b0;
+    ex_vred    = 1'b0;
 
     unique case (opcode)
       OPC_LUI:   begin ex_next = 1'b1; ex_rd_we = 1'b1; ex_rd_val = imm_u;      end
@@ -345,15 +359,38 @@ module accel_core
         endcase
       end
 
-      // ---- vector arithmetic (element-wise only for now) ----
+      // ---- vector arithmetic ----
       OPC_VARITH: begin
         if (!HAS_VPU || !(funct3 == VFORM_VV || funct3 == VFORM_VF)) ex_fault = 1'b1;
         else unique case (funct7)
+          // element-wise: all lanes in one cycle
           VOP_ADD, VOP_SUB, VOP_MUL, VOP_MAX, VOP_MIN, VOP_MACC, VOP_MV: begin
             ex_next   = 1'b1;
             ex_vpu_ar = 1'b1;
           end
-          default: ex_fault = 1'b1;              // reductions, x<->v moves: milestone 4
+          // reductions: vl cycles in the VPU (nothing at all when vl = 0)
+          VOP_REDSUM, VOP_REDMAX: begin
+            if (vl == '0) ex_next = 1'b1;
+            else          ex_vred = 1'b1;
+          end
+          // vmv.x.s rd, vs2: x[rd] = zero_extend(vs2[0]); funct3 must be 0
+          VOP_MV_X_S: begin
+            if (funct3 != VFORM_VV) ex_fault = 1'b1;
+            else begin
+              ex_next   = 1'b1;
+              ex_rd_we  = 1'b1;
+              ex_rd_val = {16'd0, vpu_rd_data[15:0]};
+            end
+          end
+          // vmv.s.x vd, rs1: vd[0] = x[rs1][15:0] if vl > 0; funct3 must be 4
+          VOP_MV_S_X: begin
+            if (funct3 != VFORM_VF) ex_fault = 1'b1;
+            else begin
+              ex_next   = 1'b1;
+              ex_vpu_sx = 1'b1;
+            end
+          end
+          default: ex_fault = 1'b1;
         endcase
       end
 
@@ -364,7 +401,9 @@ module accel_core
     if (ex_fault && ex_cause == ERR_NONE) ex_cause = ERR_ILLEGAL;
   end
 
-  assign vpu_ar_en = (state == S_EXEC) && ex_vpu_ar;
+  assign vpu_ar_en     = (state == S_EXEC) && ex_vpu_ar;
+  assign vpu_sx_en     = (state == S_EXEC) && ex_vpu_sx;
+  assign vpu_red_start = (state == S_EXEC) && ex_vred;
 
   //===========================================================================
   // Memory request (MEM state) and response data (MEM_WAIT / FETCH_WAIT)
@@ -513,6 +552,8 @@ module accel_core
         S_EXEC: begin
           if (ex_mem)
             state <= S_MEM;
+          else if (ex_vred)
+            state <= S_VRED;                        // VPU reduction started
           else begin                                // ex_next
             if (ex_rd_we && rd != 5'd0) xreg[rd] <= ex_rd_val;
             if (ex_vl_we) vl <= ex_vl_val;
@@ -529,6 +570,15 @@ module accel_core
           if (mem_resp_valid) begin
             if (is_load && rd != 5'd0) xreg[rd] <= ld_val;
             // (vector loads are written by the VPU: vpu_ld_en)
+            pc          <= pc + 32'd4;
+            instret_cnt <= instret_cnt + 64'd1;
+            state       <= S_FETCH;
+          end
+        end
+
+        // ---- wait for the VPU's reduction (vl cycles) ----
+        S_VRED: begin
+          if (vpu_red_done) begin
             pc          <= pc + 32'd4;
             instret_cnt <= instret_cnt + 64'd1;
             state       <= S_FETCH;
