@@ -158,7 +158,8 @@ module accel_top
 
   accel_core #(
     .CORE_ID(0), .VLEN(VLEN), .HBM_DATA_W(HBM_DATA_W),
-    .NUM_VPUS(NUM_VPUS), .NUM_MXUS(NUM_MXUS)
+    .NUM_VPUS(NUM_VPUS), .NUM_MXUS(NUM_MXUS),
+    .MAT_DIM(MAT_DIM), .NUM_TREGS(NUM_TREGS), .NUM_ACCS(NUM_ACCS), .MXU_ROWS(MXU_ROWS)
   ) u_core0 (
     .clk, .rst_n,
     .start, .start_pc, .args, .ncores(cores),

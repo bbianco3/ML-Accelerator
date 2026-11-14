@@ -8,5 +8,6 @@ accel_fp_pkg.sv
 accel_csr.sv
 accel_axi_master.sv
 accel_vpu.sv
+accel_mxu.sv
 accel_core.sv
 accel_top.sv

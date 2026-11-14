@@ -14,15 +14,19 @@
 //                                                 |                 (lw/sw..., vle16/vse16)
 //                                                 +--> VRED -> FETCH (vfredsum/vfredmax:
 //                                                 |                   vl cycles in the VPU)
+//                                                 +--> MROW <-> MROW_WAIT -> FETCH
+//                                                 |       (mld/mst/msta: MAT_DIM rows,
+//                                                 |        one memory access each)
+//                                                 +--> MXU_WAIT -> FETCH (mmacc)
 //                                                 +--> IDLE         (ecall, or a fault)
 //
 // Memory: the core talks to accel_axi_master one bus beat (HBM_DATA_W bits)
 // at a time. Every access lies inside one beat, because accesses are
-// naturally aligned and VLEN <= HBM_DATA_W, so the core only has to shift
+// naturally aligned and VLEN, MAT_DIM*16 <= HBM_DATA_W, so the core only has to shift
 // the data to/from the right byte offset and set the byte strobes.
 //
 // Not implemented yet (they raise ILLEGAL or are simply absent):
-//   * matrix unit, barrier                          (milestones 5, 6)
+//   * barrier, multiple cores                       (milestone 6)
 //   * scratchpad (0x2000_0000 currently goes to HBM and gets a BUS error)
 //   * instruction cache: every fetch is an HBM read (~45 cycles)
 //-----------------------------------------------------------------------------
@@ -34,7 +38,11 @@ module accel_core
   parameter int VLEN       = 256,
   parameter int HBM_DATA_W = 256,
   parameter int NUM_VPUS   = 1,
-  parameter int NUM_MXUS   = 1
+  parameter int NUM_MXUS   = 1,
+  parameter int MAT_DIM    = 16,
+  parameter int NUM_TREGS  = 4,
+  parameter int NUM_ACCS   = 2,
+  parameter int MXU_ROWS   = 4
 ) (
   input  logic                    clk,
   input  logic                    rst_n,
@@ -71,19 +79,25 @@ module accel_core
   localparam int  BYTES   = HBM_DATA_W / 8;
   localparam int  OFF_W   = $clog2(BYTES);
   localparam bit  HAS_VPU = (CORE_ID < NUM_VPUS);
+  localparam bit  HAS_MXU = (CORE_ID < NUM_MXUS);
+  localparam int  ROW_BYTES = MAT_DIM * 2;        // one tile row in memory
+  localparam int  ROW_IDX_W = $clog2(MAT_DIM);
 
   // synopsys translate_off
   initial begin
     if (VLEN > HBM_DATA_W)
       $fatal(1, "accel_core: VLEN (%0d) > HBM_DATA_W (%0d) is not supported yet", VLEN, HBM_DATA_W);
+    if (MAT_DIM * 16 > HBM_DATA_W)
+      $fatal(1, "accel_core: MAT_DIM*16 (%0d) > HBM_DATA_W (%0d) is not supported yet", MAT_DIM * 16, HBM_DATA_W);
   end
   // synopsys translate_on
 
   //===========================================================================
   // Architectural state
   //===========================================================================
-  typedef enum logic [2:0] {
-    S_IDLE, S_FETCH, S_FETCH_WAIT, S_EXEC, S_MEM, S_MEM_WAIT, S_VRED
+  typedef enum logic [3:0] {
+    S_IDLE, S_FETCH, S_FETCH_WAIT, S_EXEC, S_MEM, S_MEM_WAIT, S_VRED,
+    S_MROW, S_MROW_WAIT, S_MXU_WAIT
   } state_e;
 
   state_e          state;
@@ -93,6 +107,8 @@ module accel_core
   logic [VL_W-1:0] vl;
   logic [7:0]      ncores_q;
   logic [63:0]     cycle_cnt, instret_cnt;
+  logic [ROW_IDX_W-1:0] mrow;       // mld/mst/msta: which tile row is moving
+  logic [31:0]     maddr;           // ... and its memory address
 
   assign busy    = (state != S_IDLE);
   assign instret = instret_cnt;
@@ -185,6 +201,34 @@ module accel_core
   );
 
   //===========================================================================
+  // Matrix unit
+  //===========================================================================
+  logic                     mxu_wr_en, mxu_zero, mxu_macc, mxu_busy;
+  logic [MAT_DIM*16-1:0]    mxu_wr_data, mxu_rd_data;
+
+  accel_mxu #(
+    .MAT_DIM(MAT_DIM), .NUM_TREGS(NUM_TREGS), .NUM_ACCS(NUM_ACCS), .MXU_ROWS(MXU_ROWS)
+  ) u_mxu (
+    .clk, .rst_n,
+    .wr_en   (mxu_wr_en),               // mld: one row per memory response
+    .wr_tr   (rd[1:0]),
+    .wr_row  (mrow),
+    .wr_col  (funct3 == MLAYOUT_COL),
+    .wr_data (mxu_wr_data),
+    .rd_acc  (funct7 == MOP_STA),       // mst reads a tile, msta an accumulator
+    .rd_idx  (rd[1:0]),
+    .rd_row  (mrow),
+    .rd_col  (funct3 == MLAYOUT_COL),
+    .rd_data (mxu_rd_data),
+    .cmd_zero(mxu_zero),
+    .cmd_macc(mxu_macc),
+    .cmd_acc (rd[1:0]),
+    .cmd_ta  (rs1[1:0]),
+    .cmd_tb  (rs2[1:0]),
+    .busy    (mxu_busy)
+  );
+
+  //===========================================================================
   // Read-only kernel CSRs (csrr)
   //===========================================================================
   logic        csr_ok;
@@ -203,7 +247,7 @@ module accel_core
       KCSR_MHARTID:  csr_val = 32'(CORE_ID);
       KCSR_NCORES:   csr_val = 32'(ncores_q);
       KCSR_SPADSZ:   csr_val = 32'd0;           // no scratchpad yet (milestone 6)
-      KCSR_UNITS:    csr_val = {30'd0, 1'b0, HAS_VPU};  // MXU bit set in milestone 5
+      KCSR_UNITS:    csr_val = {30'd0, HAS_MXU, HAS_VPU};
       default:       csr_ok  = 1'b0;
     endcase
   end
@@ -223,6 +267,7 @@ module accel_core
   logic            ex_vl_we;
   logic [VL_W-1:0] ex_vl_val;
   logic            ex_vpu_ar, ex_vpu_sx, ex_vred;
+  logic            ex_mrow, ex_mzero, ex_mmacc;
 
   logic [31:0]     alu_b, alu_out;
   logic            br_taken;
@@ -268,6 +313,9 @@ module accel_core
     ex_vpu_ar  = 1'b0;
     ex_vpu_sx  = 1'b0;
     ex_vred    = 1'b0;
+    ex_mrow    = 1'b0;
+    ex_mzero   = 1'b0;
+    ex_mmacc   = 1'b0;
 
     unique case (opcode)
       OPC_LUI:   begin ex_next = 1'b1; ex_rd_we = 1'b1; ex_rd_val = imm_u;      end
@@ -394,6 +442,40 @@ module accel_core
         endcase
       end
 
+      // ---- matrix unit ----
+      OPC_MATRIX: begin
+        if (!HAS_MXU) ex_fault = 1'b1;
+        else unique case (funct7)
+          // mld / mst / msta (and .t): MAT_DIM rows through memory
+          MOP_LD, MOP_ST, MOP_STA: begin
+            if (funct3 != MLAYOUT_ROW && funct3 != MLAYOUT_COL)
+              ex_fault = 1'b1;
+            else if ((funct7 == MOP_STA) ? (rd >= NUM_ACCS) : (rd >= NUM_TREGS)) begin
+              ex_fault = 1'b1; ex_cause = ERR_BAD_REG;
+            end
+            else if ((rs1v % ROW_BYTES) != 0 || (rs2v % ROW_BYTES) != 0) begin
+              ex_fault = 1'b1; ex_cause = ERR_MISALIGNED;
+            end
+            else ex_mrow = 1'b1;
+          end
+          // mzero acc: done in this cycle
+          MOP_ZERO: begin
+            if (funct3 != MLAYOUT_ROW) ex_fault = 1'b1;
+            else if (rd >= NUM_ACCS) begin ex_fault = 1'b1; ex_cause = ERR_BAD_REG; end
+            else begin ex_next = 1'b1; ex_mzero = 1'b1; end
+          end
+          // mmacc acc, ta, tb: wait in MXU_WAIT while the array runs
+          MOP_MACC: begin
+            if (funct3 != MLAYOUT_ROW) ex_fault = 1'b1;
+            else if (rd >= NUM_ACCS || rs1 >= NUM_TREGS || rs2 >= NUM_TREGS) begin
+              ex_fault = 1'b1; ex_cause = ERR_BAD_REG;
+            end
+            else ex_mmacc = 1'b1;
+          end
+          default: ex_fault = 1'b1;
+        endcase
+      end
+
       default: ex_fault = 1'b1;
     endcase
 
@@ -404,6 +486,8 @@ module accel_core
   assign vpu_ar_en     = (state == S_EXEC) && ex_vpu_ar;
   assign vpu_sx_en     = (state == S_EXEC) && ex_vpu_sx;
   assign vpu_red_start = (state == S_EXEC) && ex_vred;
+  assign mxu_zero      = (state == S_EXEC) && ex_mzero;
+  assign mxu_macc      = (state == S_EXEC) && ex_mmacc;
 
   //===========================================================================
   // Memory request (MEM state) and response data (MEM_WAIT / FETCH_WAIT)
@@ -428,14 +512,48 @@ module accel_core
     end
   end
 
-  // FETCH uses pc; MEM uses the load/store address.
-  assign mem_req_valid = ((state == S_FETCH) && (pc[1:0] == 2'b00)) || (state == S_MEM);
-  assign mem_req_write = (state == S_MEM) && mem_write;
-  assign mem_req_addr  = (state == S_FETCH) ? pc : mem_addr;
-  assign mem_req_wdata = st_data << {mem_off, 3'b000};
-  assign mem_req_wstrb = st_mask << mem_off;
+  // Matrix rows: offset of the row inside its beat
+  logic [OFF_W-1:0] moff;
+  assign moff = maddr[OFF_W-1:0];
+
+  // Who uses the memory port: FETCH (pc), MEM (load/store) or MROW (tile row)
+  always_comb begin
+    mem_req_valid = 1'b0;
+    mem_req_write = 1'b0;
+    mem_req_addr  = pc;
+    mem_req_wdata = '0;
+    mem_req_wstrb = '0;
+    unique case (state)
+      S_FETCH: begin
+        mem_req_valid = (pc[1:0] == 2'b00);
+        mem_req_addr  = pc;
+      end
+      S_MEM: begin
+        mem_req_valid = 1'b1;
+        mem_req_write = mem_write;
+        mem_req_addr  = mem_addr;
+        mem_req_wdata = st_data << {mem_off, 3'b000};
+        mem_req_wstrb = st_mask << mem_off;
+      end
+      S_MROW: begin
+        mem_req_valid = 1'b1;
+        mem_req_write = (funct7 != MOP_LD);          // mst / msta
+        mem_req_addr  = maddr;
+        mem_req_wdata = HBM_DATA_W'(mxu_rd_data) << {moff, 3'b000};
+        mem_req_wstrb = BYTES'({ROW_BYTES{1'b1}}) << moff;
+      end
+      default: ;
+    endcase
+  end
 
   assign ld_shifted = mem_resp_rdata >> {mem_off, 3'b000};
+
+  // mld: the row from memory goes into the MXU
+  logic [HBM_DATA_W-1:0] mrow_shifted;
+  assign mrow_shifted = mem_resp_rdata >> {moff, 3'b000};
+  assign mxu_wr_data  = mrow_shifted[MAT_DIM*16-1:0];
+  assign mxu_wr_en    = (state == S_MROW_WAIT) && mem_resp_valid && !mem_resp_err
+                        && (funct7 == MOP_LD);
 
   // Load result for the scalar register file
   logic [31:0] ld_val;
@@ -487,7 +605,7 @@ module accel_core
           stop_insn = insn;
         end
       end
-      S_MEM_WAIT: if (mem_resp_valid && mem_resp_err) begin
+      S_MEM_WAIT, S_MROW_WAIT: if (mem_resp_valid && mem_resp_err) begin
         stop_now = 1'b1; stop_cause = ERR_BUS; stop_insn = insn;
       end
       default: ;
@@ -508,6 +626,8 @@ module accel_core
       end_cause   <= ERR_NONE;
       end_pc      <= '0;
       end_insn    <= '0;
+      mrow        <= '0;
+      maddr       <= '0;
       for (int i = 0; i < 32; i++) xreg[i] <= '0;
     end else begin
       end_valid <= 1'b0;                          // pulse
@@ -554,6 +674,13 @@ module accel_core
             state <= S_MEM;
           else if (ex_vred)
             state <= S_VRED;                        // VPU reduction started
+          else if (ex_mrow) begin
+            mrow  <= '0;                            // start at row 0, x[rbase]
+            maddr <= rs1v;
+            state <= S_MROW;
+          end
+          else if (ex_mmacc)
+            state <= S_MXU_WAIT;                    // MXU array started
           else begin                                // ex_next
             if (ex_rd_we && rd != 5'd0) xreg[rd] <= ex_rd_val;
             if (ex_vl_we) vl <= ex_vl_val;
@@ -579,6 +706,33 @@ module accel_core
         // ---- wait for the VPU's reduction (vl cycles) ----
         S_VRED: begin
           if (vpu_red_done) begin
+            pc          <= pc + 32'd4;
+            instret_cnt <= instret_cnt + 64'd1;
+            state       <= S_FETCH;
+          end
+        end
+
+        // ---- mld / mst / msta: one tile row per memory access ----
+        S_MROW: if (mem_req_ready) state <= S_MROW_WAIT;
+
+        S_MROW_WAIT: begin
+          if (mem_resp_valid) begin
+            // (mld rows are written into the MXU by mxu_wr_en)
+            if (mrow == ROW_IDX_W'(MAT_DIM - 1)) begin   // that was the last row
+              pc          <= pc + 32'd4;
+              instret_cnt <= instret_cnt + 64'd1;
+              state       <= S_FETCH;
+            end else begin
+              mrow  <= mrow + ROW_IDX_W'(1);
+              maddr <= maddr + rs2v;                    // + x[rstride]
+              state <= S_MROW;
+            end
+          end
+        end
+
+        // ---- mmacc: wait for the MAC array ----
+        S_MXU_WAIT: begin
+          if (!mxu_busy) begin
             pc          <= pc + 32'd4;
             instret_cnt <= instret_cnt + 64'd1;
             state       <= S_FETCH;
