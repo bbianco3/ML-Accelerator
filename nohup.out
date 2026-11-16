@@ -1,0 +1,2 @@
+asap7_setup: lc_shell not found -- source setup_env.sh
+make: *** [/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/synth/synth.mk:67: asap7] Error 1
