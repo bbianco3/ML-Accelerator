@@ -81,18 +81,31 @@ package accel_fp_pkg;
   // fp32 addition, RNE, DAZ/FTZ, canonical NaN.
   // Correctly rounded for all normal operands (guard/round/sticky scheme).
   //---------------------------------------------------------------------------
-  function automatic logic [31:0] fp32_add(input logic [31:0] a_in,
-                                           input logic [31:0] b_in);
-    logic [31:0]       a, b, t;
-    logic              a_inf, b_inf, a_zero, b_zero;
-    logic              sr, rnd;
-    logic [7:0]        ea, eb, d;
-    logic [53:0]       sh;
-    logic [26:0]       xa, xb, m;      // {hidden, frac[22:0], G, R, S}
-    logic [27:0]       s;
-    logic [24:0]       mr;
-    logic [4:0]        lz;
-    logic signed [9:0] er;
+  // fp32_add is split into two halves so the adder can be pipelined:
+  //
+  //   fp32_add_align  : DAZ, special operands, order |a| >= |b|, align b
+  //   fp32_add_finish : add/subtract, normalize, round, FTZ / overflow
+  //
+  // fp32_add(a, b) = fp32_add_finish(fp32_add_align(a, b)), bit for bit.
+  // A pipelined datapath registers the fp32_add_mid_t between the halves.
+  typedef struct packed {
+    logic        special;      // result is already known (NaN, inf, zero operand)
+    logic [31:0] special_val;  // ... and this is it
+    logic        sr;           // sign of the result = sign of the larger operand
+    logic [7:0]  ea;           // exponent of the larger operand
+    logic        eff_sub;      // operand signs differ: subtract magnitudes
+    logic [26:0] xa, xb;       // {hidden, frac[22:0], G, R, S}, xb shifted to xa's exponent
+  } fp32_add_mid_t;
+
+  function automatic fp32_add_mid_t fp32_add_align(input logic [31:0] a_in,
+                                                   input logic [31:0] b_in);
+    fp32_add_mid_t r;
+    logic [31:0]   a, b, t;
+    logic          a_inf, b_inf, a_zero, b_zero;
+    logic [7:0]    eb, d;
+    logic [53:0]   sh;
+
+    r = '0;
 
     // DAZ
     a = (a_in[30:23] == 8'h00) ? {a_in[31], 31'd0} : a_in;
@@ -103,49 +116,64 @@ package accel_fp_pkg;
     a_zero = (a[30:0] == 31'd0);
     b_zero = (b[30:0] == 31'd0);
 
-    // Special operands
-    if (fp32_is_nan(a) || fp32_is_nan(b)) return FP32_QNAN;
-    if (a_inf && b_inf)  return (a[31] == b[31]) ? a : FP32_QNAN;
-    if (a_inf)           return a;
-    if (b_inf)           return b;
-    if (a_zero && b_zero) return {a[31] & b[31], 31'd0};
-    if (a_zero)          return b;
-    if (b_zero)          return a;
+    // Special operands: the result is known now
+    r.special = 1'b1;
+    if (fp32_is_nan(a) || fp32_is_nan(b)) begin r.special_val = FP32_QNAN; return r; end
+    if (a_inf && b_inf) begin r.special_val = (a[31] == b[31]) ? a : FP32_QNAN; return r; end
+    if (a_inf)          begin r.special_val = a; return r; end
+    if (b_inf)          begin r.special_val = b; return r; end
+    if (a_zero && b_zero) begin r.special_val = {a[31] & b[31], 31'd0}; return r; end
+    if (a_zero)         begin r.special_val = b; return r; end
+    if (b_zero)         begin r.special_val = a; return r; end
+    r.special = 1'b0;
 
     // Order operands so that |a| >= |b|
     if (b[30:0] > a[30:0]) begin
       t = a; a = b; b = t;
     end
-    sr = a[31];
-    ea = a[30:23];
-    eb = b[30:23];
-    d  = ea - eb;
+    r.sr      = a[31];
+    r.ea      = a[30:23];
+    r.eff_sub = (a[31] != b[31]);
+    eb        = b[30:23];
+    d         = r.ea - eb;
 
-    xa = {1'b1, a[22:0], 3'b000};
+    r.xa = {1'b1, a[22:0], 3'b000};
     if (d >= 8'd27) begin
-      xb = 27'd1;                                   // only sticky survives
+      r.xb = 27'd1;                                 // only sticky survives
     end else begin
-      sh = {1'b1, b[22:0], 3'b000, 27'd0} >> d;
-      xb = sh[53:27];
-      xb[0] = xb[0] | (|sh[26:0]);
+      sh   = {1'b1, b[22:0], 3'b000, 27'd0} >> d;
+      r.xb = sh[53:27];
+      r.xb[0] = r.xb[0] | (|sh[26:0]);
     end
+    return r;
+  endfunction
 
-    if (a[31] == b[31]) begin
-      s = {1'b0, xa} + {1'b0, xb};
+  function automatic logic [31:0] fp32_add_finish(input fp32_add_mid_t x);
+    logic              rnd;
+    logic [26:0]       m;
+    logic [27:0]       s;
+    logic [24:0]       mr;
+    logic [4:0]        lz;
+    logic signed [9:0] er;
+
+    if (x.special) return x.special_val;
+
+    if (!x.eff_sub) begin
+      s = {1'b0, x.xa} + {1'b0, x.xb};
       if (s[27]) begin
         m    = s[27:1];
         m[0] = m[0] | s[0];
-        er   = $signed({2'b00, ea}) + 10'sd1;
+        er   = $signed({2'b00, x.ea}) + 10'sd1;
       end else begin
         m    = s[26:0];
-        er   = $signed({2'b00, ea});
+        er   = $signed({2'b00, x.ea});
       end
     end else begin
-      m = xa - xb;
+      m = x.xa - x.xb;
       if (m == 27'd0) return 32'd0;                 // exact cancellation -> +0
       lz = lzc27(m);
       m  = m << lz;
-      er = $signed({2'b00, ea}) - $signed({5'd0, lz});
+      er = $signed({2'b00, x.ea}) - $signed({5'd0, lz});
     end
 
     // Round to nearest, ties to even
@@ -156,9 +184,14 @@ package accel_fp_pkg;
       er = er + 10'sd1;
     end
 
-    if (er <= 0)   return {sr, 31'd0};               // FTZ
-    if (er >= 255) return {sr, 8'hFF, 23'd0};        // overflow -> inf
-    return {sr, er[7:0], mr[22:0]};
+    if (er <= 0)   return {x.sr, 31'd0};             // FTZ
+    if (er >= 255) return {x.sr, 8'hFF, 23'd0};      // overflow -> inf
+    return {x.sr, er[7:0], mr[22:0]};
+  endfunction
+
+  function automatic logic [31:0] fp32_add(input logic [31:0] a_in,
+                                           input logic [31:0] b_in);
+    return fp32_add_finish(fp32_add_align(a_in, b_in));
   endfunction
 
   //---------------------------------------------------------------------------

@@ -12,8 +12,10 @@
 //                                                 |                  csrr, vsetvl, vector arith)
 //                                                 +--> MEM -> MEM_WAIT -> FETCH
 //                                                 |                 (lw/sw..., vle16/vse16)
+//                                                 +--> VWAIT -> FETCH (element-wise vector op:
+//                                                 |                    VPU pipeline, 3 cycles)
 //                                                 +--> VRED -> FETCH (vfredsum/vfredmax:
-//                                                 |                   vl cycles in the VPU)
+//                                                 |                   2 cycles per element)
 //                                                 +--> MROW <-> MROW_WAIT -> FETCH
 //                                                 |       (mld/mst/msta: MAT_DIM rows,
 //                                                 |        one memory access each)
@@ -111,7 +113,7 @@ module accel_core
   //===========================================================================
   typedef enum logic [3:0] {
     S_IDLE, S_FETCH, S_FETCH_WAIT, S_EXEC, S_MEM, S_MEM_WAIT, S_VRED,
-    S_MROW, S_MROW_WAIT, S_MXU_WAIT, S_BARRIER
+    S_MROW, S_MROW_WAIT, S_MXU_WAIT, S_BARRIER, S_VWAIT
   } state_e;
 
   state_e          state;
@@ -201,13 +203,14 @@ module accel_core
   //===========================================================================
   // Vector unit
   //===========================================================================
-  logic            vpu_ar_en, vpu_ld_en, vpu_sx_en, vpu_red_start, vpu_red_done;
+  logic            vpu_ar_en, vpu_ar_busy, vpu_ld_en, vpu_sx_en, vpu_red_start, vpu_red_done;
   logic [VLEN-1:0] vpu_rd_data, vpu_ld_data;
 
   accel_vpu #(.VLEN(VLEN)) u_vpu (
     .clk, .rst_n,
     .vl,
     .ar_en     (vpu_ar_en),
+    .ar_busy   (vpu_ar_busy),
     .ar_op     (funct7),
     .ar_vf     (funct3 == VFORM_VF),
     .ar_vd     (rd),
@@ -444,9 +447,8 @@ module accel_core
       OPC_VARITH: begin
         if (!HAS_VPU || !(funct3 == VFORM_VV || funct3 == VFORM_VF)) ex_fault = 1'b1;
         else unique case (funct7)
-          // element-wise: all lanes in one cycle
+          // element-wise: all lanes at once, through the VPU pipeline (VWAIT)
           VOP_ADD, VOP_SUB, VOP_MUL, VOP_MAX, VOP_MIN, VOP_MACC, VOP_MV: begin
-            ex_next   = 1'b1;
             ex_vpu_ar = 1'b1;
           end
           // reductions: vl cycles in the VPU (nothing at all when vl = 0)
@@ -734,6 +736,8 @@ module accel_core
             state <= S_MXU_WAIT;                    // MXU array started
           else if (ex_barrier)
             state <= S_BARRIER;
+          else if (ex_vpu_ar)
+            state <= S_VWAIT;                       // VPU op started
           else begin                                // ex_next
             if (ex_rd_we && rd != 5'd0) xreg[rd] <= ex_rd_val;
             if (ex_vl_we) vl <= ex_vl_val;
@@ -786,6 +790,15 @@ module accel_core
         // ---- mmacc: wait for the MAC array ----
         S_MXU_WAIT: begin
           if (!mxu_busy) begin
+            pc          <= pc + 32'd4;
+            instret_cnt <= instret_cnt + 64'd1;
+            state       <= S_FETCH;
+          end
+        end
+
+        // ---- element-wise vector op: wait until the VPU wrote vd ----
+        S_VWAIT: begin
+          if (!vpu_ar_busy) begin
             pc          <= pc + 32'd4;
             instret_cnt <= instret_cnt + 64'd1;
             state       <= S_FETCH;
