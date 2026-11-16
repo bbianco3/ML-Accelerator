@@ -18,16 +18,19 @@
 //                                                 |       (mld/mst/msta: MAT_DIM rows,
 //                                                 |        one memory access each)
 //                                                 +--> MXU_WAIT -> FETCH (mmacc)
+//                                                 +--> BARRIER -> FETCH  (barrier: wait for
+//                                                 |                       every launched core)
 //                                                 +--> IDLE         (ecall, or a fault)
 //
-// Memory: the core talks to accel_axi_master one bus beat (HBM_DATA_W bits)
+// Multi-core: if another core faults, `abort` is raised and this core stops
+// (without an error of its own) at its next FETCH or BARRIER.
+//
+// Memory: the core talks to accel_spad / accel_axi_master one bus beat (HBM_DATA_W bits)
 // at a time. Every access lies inside one beat, because accesses are
 // naturally aligned and VLEN, MAT_DIM*16 <= HBM_DATA_W, so the core only has to shift
 // the data to/from the right byte offset and set the byte strobes.
 //
 // Not implemented yet (they raise ILLEGAL or are simply absent):
-//   * barrier, multiple cores                       (milestone 6)
-//   * scratchpad (0x2000_0000 currently goes to HBM and gets a BUS error)
 //   * instruction cache: every fetch is an HBM read (~45 cycles)
 //-----------------------------------------------------------------------------
 
@@ -42,7 +45,8 @@ module accel_core
   parameter int MAT_DIM    = 16,
   parameter int NUM_TREGS  = 4,
   parameter int NUM_ACCS   = 2,
-  parameter int MXU_ROWS   = 4
+  parameter int MXU_ROWS   = 4,
+  parameter int SPAD_KB    = 16
 ) (
   input  logic                    clk,
   input  logic                    rst_n,
@@ -52,6 +56,11 @@ module accel_core
   input  logic [31:0]             start_pc,
   input  logic [7:0][31:0]        args,
   input  logic [7:0]              ncores,       // cores launched together
+
+  // ---- multi-core control, from/to accel_top ----
+  output logic                    at_barrier,   // waiting in a barrier
+  input  logic                    barrier_go,   // every launched core arrived
+  input  logic                    abort,        // another core faulted: stop
 
   // ---- run status, to accel_top / accel_csr ----
   output logic                    busy,
@@ -97,7 +106,7 @@ module accel_core
   //===========================================================================
   typedef enum logic [3:0] {
     S_IDLE, S_FETCH, S_FETCH_WAIT, S_EXEC, S_MEM, S_MEM_WAIT, S_VRED,
-    S_MROW, S_MROW_WAIT, S_MXU_WAIT
+    S_MROW, S_MROW_WAIT, S_MXU_WAIT, S_BARRIER
   } state_e;
 
   state_e          state;
@@ -110,7 +119,8 @@ module accel_core
   logic [ROW_IDX_W-1:0] mrow;       // mld/mst/msta: which tile row is moving
   logic [31:0]     maddr;           // ... and its memory address
 
-  assign busy    = (state != S_IDLE);
+  assign busy       = (state != S_IDLE);
+  assign at_barrier = (state == S_BARRIER);
   assign instret = instret_cnt;
 
   //===========================================================================
@@ -246,7 +256,7 @@ module accel_core
       KCSR_VLENB:    csr_val = 32'(VLEN / 8);
       KCSR_MHARTID:  csr_val = 32'(CORE_ID);
       KCSR_NCORES:   csr_val = 32'(ncores_q);
-      KCSR_SPADSZ:   csr_val = 32'd0;           // no scratchpad yet (milestone 6)
+      KCSR_SPADSZ:   csr_val = 32'(SPAD_KB * 1024);
       KCSR_UNITS:    csr_val = {30'd0, HAS_MXU, HAS_VPU};
       default:       csr_ok  = 1'b0;
     endcase
@@ -267,7 +277,7 @@ module accel_core
   logic            ex_vl_we;
   logic [VL_W-1:0] ex_vl_val;
   logic            ex_vpu_ar, ex_vpu_sx, ex_vred;
-  logic            ex_mrow, ex_mzero, ex_mmacc;
+  logic            ex_mrow, ex_mzero, ex_mmacc, ex_barrier;
 
   logic [31:0]     alu_b, alu_out;
   logic            br_taken;
@@ -316,6 +326,7 @@ module accel_core
     ex_mrow    = 1'b0;
     ex_mzero   = 1'b0;
     ex_mmacc   = 1'b0;
+    ex_barrier = 1'b0;
 
     unique case (opcode)
       OPC_LUI:   begin ex_next = 1'b1; ex_rd_we = 1'b1; ex_rd_val = imm_u;      end
@@ -476,6 +487,12 @@ module accel_core
         endcase
       end
 
+      // ---- multi-core control ----
+      OPC_CTRL: begin
+        if (insn == INSN_BARRIER) ex_barrier = 1'b1;
+        else                      ex_fault   = 1'b1;
+      end
+
       default: ex_fault = 1'b1;
     endcase
 
@@ -525,7 +542,7 @@ module accel_core
     mem_req_wstrb = '0;
     unique case (state)
       S_FETCH: begin
-        mem_req_valid = (pc[1:0] == 2'b00);
+        mem_req_valid = (pc[1:0] == 2'b00) && !abort;
         mem_req_addr  = pc;
       end
       S_MEM: begin
@@ -588,8 +605,15 @@ module accel_core
     stop_cause = ERR_NONE;
     stop_insn  = 32'd0;
     unique case (state)
-      S_FETCH: if (pc[1:0] != 2'b00) begin
-        stop_now = 1'b1; stop_cause = ERR_MISALIGNED;          // fetch fault: insn = 0
+      S_FETCH: begin
+        if (abort) begin
+          stop_now = 1'b1; stop_err = 1'b0;                    // another core faulted
+        end else if (pc[1:0] != 2'b00) begin
+          stop_now = 1'b1; stop_cause = ERR_MISALIGNED;        // fetch fault: insn = 0
+        end
+      end
+      S_BARRIER: if (abort) begin
+        stop_now = 1'b1; stop_err = 1'b0;
       end
       S_FETCH_WAIT: if (mem_resp_valid && mem_resp_err) begin
         stop_now = 1'b1; stop_cause = ERR_BUS;
@@ -640,7 +664,8 @@ module accel_core
         end_cause <= stop_cause;
         end_pc    <= pc;
         end_insn  <= stop_insn;
-        if (!stop_err) instret_cnt <= instret_cnt + 64'd1;   // ecall retires
+        if (state == S_EXEC && !stop_err)                       // ecall retires
+          instret_cnt <= instret_cnt + 64'd1;
       end else unique case (state)
         // ---- wait for launch ----
         S_IDLE: begin
@@ -681,6 +706,8 @@ module accel_core
           end
           else if (ex_mmacc)
             state <= S_MXU_WAIT;                    // MXU array started
+          else if (ex_barrier)
+            state <= S_BARRIER;
           else begin                                // ex_next
             if (ex_rd_we && rd != 5'd0) xreg[rd] <= ex_rd_val;
             if (ex_vl_we) vl <= ex_vl_val;
@@ -733,6 +760,15 @@ module accel_core
         // ---- mmacc: wait for the MAC array ----
         S_MXU_WAIT: begin
           if (!mxu_busy) begin
+            pc          <= pc + 32'd4;
+            instret_cnt <= instret_cnt + 64'd1;
+            state       <= S_FETCH;
+          end
+        end
+
+        // ---- barrier: wait until every launched core is here or done ----
+        S_BARRIER: begin
+          if (barrier_go) begin
             pc          <= pc + 32'd4;
             instret_cnt <= instret_cnt + 64'd1;
             state       <= S_FETCH;
