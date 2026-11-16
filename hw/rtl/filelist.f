@@ -7,7 +7,10 @@ accel_pkg.sv
 accel_fp_pkg.sv
 accel_csr.sv
 accel_axi_master.sv
+accel_axi_arbiter.sv
+accel_spad.sv
 accel_vpu.sv
 accel_mxu.sv
+accel_icache.sv
 accel_core.sv
 accel_top.sv
