@@ -197,9 +197,11 @@ module accel_vpu
   //---------------------------------------------------------------------------
   // Reduction engine: one element per step, in order, two cycles per step
   //---------------------------------------------------------------------------
-  //   start:   acc = f(init) (sum) / m = init (max); idx = 0
-  //   phase 0: mid = align(acc, f(vs2[idx])); m = max(m, vs2[idx])
-  //   phase 1: acc = finish(mid); idx++
+  //   start:   acc = f(init) (sum) / m = init (max); idx = 0; elem = vs2[0]
+  //   phase 0: mid = align(acc, f(elem)); m = max(m, elem)
+  //   phase 1: acc = finish(mid); idx++; elem = vs2[idx+1]
+  // The element is selected one phase early and registered (red_elem), so
+  // phase 0 starts from a flip-flop instead of a 32:1 + VLMAX:1 mux.
   //   last element, phase 1: write vd[0] = r(acc) / m, raise red_done
   localparam int VL_W = $clog2(VLMAX) + 1;
 
@@ -210,11 +212,12 @@ module accel_vpu
   fp32_add_mid_t   red_mid;           // the sum between its two halves
   logic [15:0]     red_m;             // running bf16 max
   logic [15:0]     red_init, red_elem, red_result;
+  logic [$clog2(VLMAX)-1:0] red_next;  // lane of the next element (wraps; unused at the end)
   logic [31:0]     red_sum;
   logic            red_last;
 
   assign red_init   = red_vf ? red_scalar : vreg[red_vs1][15:0];
-  assign red_elem   = vreg[red_vs2_q][16*red_idx +: 16];
+  assign red_next   = red_idx[$clog2(VLMAX)-1:0] + 1'b1;
   assign red_sum    = fp32_add_finish(red_mid);
   assign red_result = red_max_q ? red_m : fp32_to_bf16(red_sum);
   assign red_last   = red_busy && red_phase && (red_idx == vl - VL_W'(1));
@@ -232,6 +235,7 @@ module accel_vpu
       red_vs2_q <= red_vs2;
       red_acc   <= bf16_to_fp32(red_init);
       red_m     <= red_init;
+      red_elem  <= vreg[red_vs2][15:0];         // element 0
     end else if (red_busy) begin
       if (!red_phase) begin                     // phase 0: align, max
         red_mid   <= fp32_add_align(red_acc, bf16_to_fp32(red_elem));
@@ -239,6 +243,7 @@ module accel_vpu
         red_phase <= 1'b1;
       end else begin                            // phase 1: finish, next element
         red_acc   <= red_sum;
+        red_elem  <= vreg[red_vs2_q][16*red_next +: 16];   // next element
         red_phase <= 1'b0;
         red_idx   <= red_idx + VL_W'(1);
         if (red_last) red_busy <= 1'b0;

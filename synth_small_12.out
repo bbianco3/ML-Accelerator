@@ -1009,3 +1009,355 @@ Information: Complementing port 'abort_BAR' in design 'accel_core_CORE_ID0_VLEN6
   -------------------------------
 Information: Updating design information... (UID-85)
 Warning: Only placeholder alibs were found. Proceeding with library analysis. (OPT-1311)
+  Mapping Optimization (Phase 1)
+  Mapping Optimization (Phase 2)
+Information: Added key list 'DesignWare' to design 'accel_top'. (DDB-72)
+
+                                  TOTAL                                                
+   ELAPSED            WORST NEG   SETUP    DESIGN                              LEAKAGE 
+    TIME      AREA      SLACK     COST    RULE COST         ENDPOINT            POWER  
+  --------- --------- --------- --------- --------- ------------------------- ---------
+    0:23:17   26655.6     86.79  434141.8       0.0                           31377560.0000
+    0:23:51   26415.4    173.51  663214.3      23.6                           31046538.0000
+
+  Beginning Constant Register Removal
+  -----------------------------------
+
+  Beginning Global Optimizations
+  ------------------------------
+  Numerical Synthesis (Phase 1)
+  Numerical Synthesis (Phase 2)
+  Global Optimization (Phase 1)
+  Global Optimization (Phase 2)
+  Global Optimization (Phase 3)
+  Global Optimization (Phase 4)
+  Global Optimization (Phase 5)
+  Global Optimization (Phase 6)
+  Global Optimization (Phase 7)
+  Global Optimization (Phase 8)
+  Global Optimization (Phase 9)
+  Global Optimization (Phase 10)
+  Global Optimization (Phase 11)
+  Global Optimization (Phase 12)
+  Global Optimization (Phase 13)
+  Global Optimization (Phase 14)
+  Global Optimization (Phase 15)
+  Global Optimization (Phase 16)
+  Global Optimization (Phase 17)
+  Global Optimization (Phase 18)
+  Global Optimization (Phase 19)
+  Global Optimization (Phase 20)
+  Global Optimization (Phase 21)
+  Global Optimization (Phase 22)
+  Global Optimization (Phase 23)
+  Global Optimization (Phase 24)
+  Global Optimization (Phase 25)
+  Global Optimization (Phase 26)
+  Global Optimization (Phase 27)
+  Global Optimization (Phase 28)
+  Global Optimization (Phase 29)
+  Global Optimization (Phase 30)
+  Global Optimization (Phase 31)
+  Global Optimization (Phase 32)
+
+  Beginning Isolate Ports
+  -----------------------
+
+  Beginning Delay Optimization
+  ----------------------------
+    0:26:01   23458.3    275.35  783974.4     202.1                           24191218.0000
+    0:27:48   23704.8     11.10   14099.0     189.2                           24693368.0000
+    0:27:48   23704.8     11.10   14099.0     189.2                           24693368.0000
+    0:27:49   23704.9     10.65   13703.5     189.2                           24693522.0000
+    0:28:33   23553.7     93.58   49983.1     193.6                           24501252.0000
+    0:28:59   23431.8     93.02   52598.5     201.5                           24364846.0000
+
+  Beginning WLM Backend Optimization
+  --------------------------------------
+    0:30:12   23436.3     93.02  190725.0     157.5                           24304292.0000
+    0:30:18   23404.6     87.42  135406.7     155.0                           24236838.0000
+    0:30:20   23382.8     87.42  127159.9     155.0                           24206080.0000
+    0:30:22   23356.3     87.42   69177.0     155.0                           24167470.0000
+    0:30:25   23333.8     87.42   49863.4     155.0                           24134116.0000
+    0:30:27   23301.0     87.42   49793.7     152.1                           24088626.0000
+    0:30:31   23273.6     87.36   50094.9     135.3                           24042878.0000
+    0:30:34   23262.5     79.39   46338.4     135.3                           24028208.0000
+    0:30:35   23252.6     79.39   44847.4     135.3                           24014814.0000
+    0:30:37   23240.1     79.39   44751.4     118.7                           23986418.0000
+    0:30:41   23241.3     59.28   33829.7     118.7                           23990314.0000
+    0:30:41   23241.3     59.28   33829.7     118.7                           23990314.0000
+    0:30:41   23241.3     59.28   33829.7     118.7                           23990314.0000
+    0:30:41   23241.3     59.28   33829.7     118.7                           23990314.0000
+    0:31:01   23213.7     58.98   40530.4     116.0                           23902122.0000
+    0:31:01   23213.7     58.98   40530.4     116.0                           23902122.0000
+    0:31:51   23262.1      0.00       0.0     108.0                           23983336.0000
+    0:31:51   23262.1      0.00       0.0     108.0                           23983336.0000
+    0:31:51   23262.1      0.00       0.0     108.0                           23983336.0000
+    0:31:51   23262.1      0.00       0.0     108.0                           23983336.0000
+    0:31:51   23262.1      0.00       0.0     108.0                           23983336.0000
+    0:31:51   23262.1      0.00       0.0     108.0                           23983336.0000
+    0:31:51   23262.1      0.00       0.0     108.0                           23983336.0000
+    0:31:51   23262.1      0.00       0.0     108.0                           23983336.0000
+    0:31:51   23262.1      0.00       0.0     108.0                           23983336.0000
+    0:31:51   23262.1      0.00       0.0     108.0                           23983336.0000
+    0:31:51   23262.1      0.00       0.0     108.0                           23983336.0000
+    0:31:51   23262.1      0.00       0.0     108.0                           23983336.0000
+    0:31:51   23262.1      0.00       0.0     108.0                           23983336.0000
+    0:31:51   23262.1      0.00       0.0     108.0                           23983336.0000
+    0:31:51   23262.1      0.00       0.0     108.0                           23983336.0000
+    0:31:51   23262.1      0.00       0.0     108.0                           23983336.0000
+    0:31:51   23262.1      0.00       0.0     108.0                           23983336.0000
+
+
+  Beginning Design Rule Fixing  (max_transition)  (max_capacitance)
+  ----------------------------
+
+                                  TOTAL                                                
+   ELAPSED            WORST NEG   SETUP    DESIGN                              LEAKAGE 
+    TIME      AREA      SLACK     COST    RULE COST         ENDPOINT            POWER  
+  --------- --------- --------- --------- --------- ------------------------- ---------
+    0:31:51   23262.1      0.00       0.0     108.0                           23983336.0000
+  Global Optimization (Phase 33)
+  Global Optimization (Phase 34)
+  Global Optimization (Phase 35)
+    0:31:55   23262.2      0.00       0.0       0.0                           23983752.0000
+    0:31:55   23262.2      0.00       0.0       0.0                           23983752.0000
+    0:31:55   23262.2      0.00       0.0       0.0                           23983752.0000
+    0:31:55   23262.2      0.00       0.0       0.0                           23983752.0000
+    0:31:56   23262.2      0.00       0.0       0.0                           23983752.0000
+    0:32:11   23241.7      4.06      86.7       0.0                           23928048.0000
+    0:32:11   23241.7      4.06      86.7       0.0                           23928048.0000
+    0:32:15   23247.3      0.01       0.0       0.0                           23937376.0000
+    0:32:15   23247.3      0.01       0.0       0.0                           23937376.0000
+    0:32:15   23247.3      0.01       0.0       0.0                           23937376.0000
+    0:32:15   23247.3      0.01       0.0       0.0                           23937376.0000
+    0:32:16   23247.3      0.01       0.0       0.0                           23937376.0000
+    0:32:16   23247.3      0.01       0.0       0.0                           23937376.0000
+    0:32:17   23247.3      0.01       0.0       0.0                           23937376.0000
+    0:32:17   23247.3      0.01       0.0       0.0                           23937376.0000
+    0:32:18   23247.3      0.01       0.0       0.0                           23937376.0000
+    0:32:18   23247.3      0.01       0.0       0.0                           23937376.0000
+    0:32:18   23247.3      0.01       0.0       0.0                           23937376.0000
+    0:32:18   23247.3      0.01       0.0       0.0                           23937376.0000
+    0:32:19   23247.3      0.01       0.0       0.0                           23937376.0000
+    0:32:19   23247.3      0.01       0.0       0.0                           23937376.0000
+    0:32:20   23247.3      0.01       0.0       0.0                           23937376.0000
+    0:32:20   23247.3      0.01       0.0       0.0                           23937376.0000
+    0:32:21   23247.3      0.01       0.0       0.0                           23937376.0000
+
+                                  TOTAL                                                
+   ELAPSED            WORST NEG   SETUP    DESIGN                              LEAKAGE 
+    TIME      AREA      SLACK     COST    RULE COST         ENDPOINT            POWER  
+  --------- --------- --------- --------- --------- ------------------------- ---------
+    0:32:24   23235.7      0.01       0.0       0.0                           23936936.0000
+    0:32:37   23199.9      0.01       0.0       1.2                           23885936.0000
+    0:32:38   23200.1      0.00       0.0       1.2                           23886346.0000
+    0:32:38   23200.1      0.00       0.0       1.2                           23886346.0000
+    0:32:51   23192.3      0.00       0.0       1.2                           23862704.0000
+    0:32:54   23189.7      0.00       0.0       1.2                           23854212.0000
+    0:32:56   23185.8      0.00       0.0       1.2                           23847126.0000
+    0:32:57   23182.7      0.00       0.0       1.2                           23842510.0000
+    0:33:00   23178.2      0.00       0.0       1.2                           23833632.0000
+    0:33:02   23175.0      0.00       0.0       1.2                           23827758.0000
+    0:33:04   23172.7      0.00       0.0       1.2                           23822110.0000
+    0:33:11   23165.8      0.00       0.0       0.0                           23802224.0000
+    0:33:11   23165.8      0.00       0.0       0.0                           23802224.0000
+    0:33:11   23165.8      0.00       0.0       0.0                           23802224.0000
+    0:33:11   23165.8      0.00       0.0       0.0                           23802224.0000
+    0:33:11   23165.8      0.00       0.0       0.0                           23802224.0000
+    0:33:11   23165.8      0.00       0.0       0.0                           23802224.0000
+    0:33:27   23149.2      0.00       0.0       0.7                           23746926.0000
+CPU Load: 10%, Ram Free: 11 GB, Swap Free: 7 GB, Work Disk Free: 21 GB, Tmp Disk Free: 7 GB
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_INVBUF_RVT_TT_nldm_220122.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_128x128_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_128x32_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_128x64_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_256x128_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_256x32_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_256x64_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_512x128_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_512x32_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_512x64_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_64x128_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_64x32_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_64x64_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_AO_RVT_TT_nldm_211120.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_OA_RVT_TT_nldm_211120.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_SEQ_RVT_TT_nldm_220123.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_SIMPLE_RVT_TT_nldm_211120.db'
+
+
+Note: Symbol # after min delay cost means estimated hold TNS across all active scenarios 
+
+
+  Optimization Complete
+  ---------------------
+Warning: Design 'accel_top' contains 1 high-fanout nets. A fanout number of 1000 will be used for delay calculations involving these nets. (TIM-134)
+     Net 'g_core[1].u_spad/g_sram.u_sram/clk': 17525 load(s), 1 driver(s)
+  Loading target library 'asap7sc7p5t_AO_RVT_TT_nldm_211120'
+  Loading target library 'asap7sc7p5t_OA_RVT_TT_nldm_211120'
+  Loading target library 'asap7sc7p5t_SEQ_RVT_TT_nldm_220123'
+  Loading target library 'asap7sc7p5t_SIMPLE_RVT_TT_nldm_211120'
+Information: State dependent leakage is now switched from off to on.
+Information: Propagating switching activity (low effort zero delay simulation). (PWR-6)
+Warning: Design has unannotated black box outputs. (PWR-428)
+CPU Load: 11%, Ram Free: 10 GB, Swap Free: 7 GB, Work Disk Free: 21 GB, Tmp Disk Free: 7 GB
+Information: Total number of MV cells in the design.
+----------------------------------------------------------------------------------------------------
+ MV Cells                                           Total Number                                   
+----------------------------------------------------------------------------------------------------
+ Level Shifter:                                     0                                             
+ Enable Level Shifter:                              0                                             
+ Isolation Cell:                                    0                                             
+ Retention Cell:                                    0                                             
+ Retention Clamp Cell:                              0                                             
+ Switch Cell:                                       0                                             
+ Always-On Cell:                                    0                                             
+ Repeater Cell:                                     0                                             
+
+----------------------------------------------------------------------------------------------------
+Unmapped MV Cells 
+----------------------------------------------------------------------------------------------------
+0 Isolation Cells are unmapped 
+0 Retention Clamp Cells are unmapped 
+----------------------------------------------------------------------------------------------------
+1
+#------------------------------------------------------------------------------
+# Reports and outputs
+#------------------------------------------------------------------------------
+report_qor                                  > reports/qor.rpt
+report_area -hierarchy                      > reports/area.rpt
+report_timing -max_paths 10 -nworst 1       > reports/timing.rpt
+report_constraint -all_violators            > reports/violators.rpt
+report_power -hierarchy                     > reports/power.rpt
+report_reference -hierarchy                 > reports/reference.rpt
+# Every SRAM macro instance with its area (empty with SRAM=flops)
+set sram_cells [get_cells -quiet -hierarchical -filter "ref_name =~ sram1rw_*"]
+{g_core[0].u_spad/g_sram.u_sram/g_macro.g_bank[0].g_col[0].g_m.u_mem g_core[1].u_spad/g_sram.u_sram/g_macro.g_bank[0].g_col[0].g_m.u_mem}
+if {[sizeof_collection $sram_cells] > 0} {
+  report_cell -nosplit $sram_cells          > reports/sram.rpt
+} else {
+  echo "No SRAM macros (SRAM=$sram_mode)"  > reports/sram.rpt
+}
+check_design                                > reports/check_design_post.rpt
+write -format ddc     -hierarchy -output accel_top.ddc
+Writing ddc file 'accel_top.ddc'.
+1
+write -format verilog -hierarchy -output accel_top.v
+Writing verilog file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/build/synth/asap7_TT_RVT/v64_m4_t2_a1_r4_d64_i4_c2_s4_p1_1.2ns/accel_top.v'.
+Warning: Verilog 'assign' or 'tran' statements are written out. (VO-4)
+Warning: Verilog writer has added 22 nets to module accel_top using SYNOPSYS_UNCONNECTED_ as prefix.  Please use the change_names command to make the correct changes before invoking the verilog writer.  (VO-11)
+1
+puts "INFO: synthesis finished. Worst slack:"
+INFO: synthesis finished. Worst slack:
+report_timing -max_paths 1 -nworst 1 -significant_digits 3
+Information: Updating design information... (UID-85)
+Warning: Design 'accel_top' contains 1 high-fanout nets. A fanout number of 1000 will be used for delay calculations involving these nets. (TIM-134)
+ 
+****************************************
+Report : timing
+        -path full
+        -delay max
+        -max_paths 1
+Design : accel_top
+Version: W-2024.09
+Date   : Mon Nov 16 22:01:43 2026
+****************************************
+
+ # A fanout number of 1000 was used for high fanout net computations.
+
+Operating Conditions: PVT_0P7V_25C   Library: asap7sc7p5t_AO_RVT_TT_nldm_211120
+Wire Load Model Mode: top
+
+  Startpoint: g_core[1].u_core/u_vpu/red_vs2_q_reg[0]
+              (rising edge-triggered flip-flop clocked by clk)
+  Endpoint: g_core[1].u_core/u_vpu/red_mid_reg[xb][6]
+            (rising edge-triggered flip-flop clocked by clk)
+  Path Group: clk
+  Path Type: max
+
+  Point                                                   Incr       Path
+  --------------------------------------------------------------------------
+  clock clk (rise edge)                                  0.000      0.000
+  clock network delay (ideal)                            0.000      0.000
+  g_core[1].u_core/u_vpu/red_vs2_q_reg[0]/CLK (DFFHQNx1_ASAP7_75t_R)
+                                                         0.000 #    0.000 r
+  g_core[1].u_core/u_vpu/red_vs2_q_reg[0]/QN (DFFHQNx1_ASAP7_75t_R)
+                                                        62.193     62.193 f
+  g_core[1].u_core/u_vpu/U8242/Y (NAND2x1_ASAP7_75t_R)
+                                                        52.204    114.397 r
+  g_core[1].u_core/u_vpu/U8283/Y (NOR2x1_ASAP7_75t_R)   26.378    140.775 f
+  g_core[1].u_core/u_vpu/U31/Y (BUFx2_ASAP7_75t_R)      95.885    236.660 f
+  g_core[1].u_core/u_vpu/U8653/Y (AOI22x1_ASAP7_75t_R)
+                                                        32.898    269.558 r
+  g_core[1].u_core/u_vpu/U8657/Y (AND4x1_ASAP7_75t_R)   33.860    303.418 r
+  g_core[1].u_core/u_vpu/U8662/Y (AND4x1_ASAP7_75t_R)   32.753    336.171 r
+  g_core[1].u_core/u_vpu/U8683/Y (OAI22x1_ASAP7_75t_R)
+                                                        17.032    353.203 f
+  g_core[1].u_core/u_vpu/U330/Y (NOR2x1_ASAP7_75t_R)    15.244    368.447 r
+  g_core[1].u_core/u_vpu/U328/Y (AND4x1_ASAP7_75t_R)    32.925    401.372 r
+  g_core[1].u_core/u_vpu/U282/Y (NAND2x1_ASAP7_75t_R)   28.770    430.142 f
+  g_core[1].u_core/u_vpu/U288/Y (NAND2x1_ASAP7_75t_R)   49.327    479.469 r
+  g_core[1].u_core/u_vpu/U9182/Y (NOR2x1_ASAP7_75t_R)   17.757    497.226 f
+  g_core[1].u_core/u_vpu/U9183/Y (OR4x1_ASAP7_75t_R)    60.491    557.717 f
+  g_core[1].u_core/u_vpu/U9184/Y (NOR2x1_ASAP7_75t_R)   23.920    581.637 r
+  g_core[1].u_core/u_vpu/U9277/Y (NOR2x1_ASAP7_75t_R)   17.098    598.735 f
+  g_core[1].u_core/u_vpu/U9278/Y (NAND2x1_ASAP7_75t_R)
+                                                        11.566    610.301 r
+  g_core[1].u_core/u_vpu/U131/Y (OA21x2_ASAP7_75t_R)    22.344    632.646 r
+  g_core[1].u_core/u_vpu/U289/Y (AOI21x1_ASAP7_75t_R)    9.756    642.402 f
+  g_core[1].u_core/u_vpu/U293/Y (OAI21x1_ASAP7_75t_R)   12.166    654.568 r
+  g_core[1].u_core/u_vpu/U292/Y (OA21x2_ASAP7_75t_R)    31.847    686.415 r
+  g_core[1].u_core/u_vpu/U183/Y (INVx6_ASAP7_75t_R)     33.899    720.314 f
+  g_core[1].u_core/u_vpu/U9657/Y (NAND2x1_ASAP7_75t_R)
+                                                        18.582    738.896 r
+  g_core[1].u_core/u_vpu/U9658/Y (OA21x2_ASAP7_75t_R)   29.553    768.449 r
+  g_core[1].u_core/u_vpu/U354/Y (NOR2x1_ASAP7_75t_R)    15.345    783.794 f
+  g_core[1].u_core/u_vpu/U169/Y (INVx1_ASAP7_75t_R)     12.956    796.750 r
+  g_core[1].u_core/u_vpu/U294/Y (AOI21x1_ASAP7_75t_R)   15.384    812.134 f
+  g_core[1].u_core/u_vpu/U348/Y (INVx1_ASAP7_75t_R)     11.195    823.329 r
+  g_core[1].u_core/u_vpu/U685/Y (AO21x1_ASAP7_75t_R)    24.129    847.458 r
+  g_core[1].u_core/u_vpu/U9759/Y (AOI21x1_ASAP7_75t_R)
+                                                        11.917    859.375 f
+  g_core[1].u_core/u_vpu/U9760/Y (XOR2x2_ASAP7_75t_R)   34.813    894.188 r
+  g_core[1].u_core/u_vpu/U9761/Y (NOR3x1_ASAP7_75t_R)   16.374    910.563 f
+  g_core[1].u_core/u_vpu/U299/Y (NAND2x1_ASAP7_75t_R)   21.705    932.268 r
+  g_core[1].u_core/u_vpu/U298/Y (NOR2x1_ASAP7_75t_R)    49.292    981.560 f
+  g_core[1].u_core/u_vpu/U297/Y (NAND2x1_ASAP7_75t_R)   43.591   1025.151 r
+  g_core[1].u_core/u_vpu/U296/Y (INVx1_ASAP7_75t_R)     45.145   1070.296 f
+  g_core[1].u_core/u_vpu/U25342/Y (OA211x2_ASAP7_75t_R)
+                                                        52.107   1122.403 f
+  g_core[1].u_core/u_vpu/U25343/Y (INVx1_ASAP7_75t_R)    8.222   1130.625 r
+  g_core[1].u_core/u_vpu/U25345/Y (OA211x2_ASAP7_75t_R)
+                                                        25.158   1155.783 r
+  g_core[1].u_core/u_vpu/red_mid_reg[xb][6]/D (DFFHQNx1_ASAP7_75t_R)
+                                                         0.000   1155.783 r
+  data arrival time                                              1155.783
+
+  clock clk (rise edge)                               1200.000   1200.000
+  clock network delay (ideal)                            0.000   1200.000
+  clock uncertainty                                    -24.000   1176.000
+  g_core[1].u_core/u_vpu/red_mid_reg[xb][6]/CLK (DFFHQNx1_ASAP7_75t_R)
+                                                         0.000   1176.000 r
+  library setup time                                   -20.203   1155.797
+  data required time                                             1155.797
+  --------------------------------------------------------------------------
+  data required time                                             1155.797
+  data arrival time                                              -1155.783
+  --------------------------------------------------------------------------
+  slack (MET)                                                       0.014
+
+
+1
+exit
+
+Memory usage for this session 1073 Mbytes.
+Memory usage for this session including child processes 1095 Mbytes.
+CPU usage for this session 2061 seconds ( 0.57 hours ).
+Elapsed time for this session 2101 seconds ( 0.58 hours ).
+
+Thank you...
+Reports are in /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/build/synth/asap7_TT_RVT/v64_m4_t2_a1_r4_d64_i4_c2_s4_p1_1.2ns/reports/
+limits (competition.json) for /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/build/synth/asap7_TT_RVT/v64_m4_t2_a1_r4_d64_i4_c2_s4_p1_1.2ns
+  timing : worst slack 0.01 at the synthesized clock period  -> met
+  area   : 23149 um^2, limit 200000 um^2 (12 %)  -> ok
