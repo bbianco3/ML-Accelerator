@@ -1,0 +1,1011 @@
+asap7_setup: ready: /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT
+sram_setup: ready: /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT (datasheet: /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/datasheet_TT.md)
+cd /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/build/synth/asap7_TT_RVT/v64_m4_t2_a1_r4_d64_i4_c2_s4_p1_1.2ns && \
+  ACCEL_RTL_DIR=/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl ACCEL_GEN_SRCS="/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/build/gen/accel_sram_1rw.sv" CLK_PERIOD=1.2 PDK=asap7 SRAM=macro \
+  ASAP7_DIR=/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7 ASAP7_CORNER=TT ASAP7_VT=RVT \
+  VLEN=64 MAT_DIM=4 NUM_TREGS=2 NUM_ACCS=1 \
+  MXU_ROWS=4 HBM_DATA_W=64 ICACHE_LINES=4 \
+  NUM_CORES=2 SPAD_KB=4 \
+  NUM_VPUS=2 NUM_MXUS=2 FP_PIPE=1 \
+  dc_shell -f /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/synth/synthesis.tcl 2>&1 | tee synth.log
+Info: [VCS_SAVE_RESTORE_INFO] ASLR (Address Space Layout Randomization) is detected on the machine. To enable $save functionality, ASLR will be switched off and simv re-executed.
+Please use '-no_save' simv switch to avoid this.
+
+                           Design Compiler Graphical 
+                                 DC Ultra (TM)
+                                  DFTMAX (TM)
+                              Power Compiler (TM)
+                                 DesignWare (R)
+                                 DC Expert (TM)
+                               Design Vision (TM)
+                               HDL Compiler (TM)
+                               VHDL Compiler (TM)
+                                  DFT Compiler
+                               Design Compiler(R)
+
+                 Version W-2024.09 for linux64 - Aug 27, 2024 
+
+                    Copyright (c) 1988 - 2024 Synopsys, Inc.
+   This software and the associated documentation are proprietary to Synopsys,
+ Inc. This software may only be used in accordance with the terms and conditions
+ of a written license agreement with Synopsys, Inc. All other use, reproduction,
+   or distribution of this software is strictly prohibited.  Licensed Products
+     communicate with Synopsys servers for the purpose of providing software
+    updates, detecting software piracy and verifying that customers are using
+    Licensed Products in conformity with the applicable License Key for such
+  Licensed Products. Synopsys will use information gathered in connection with
+    this process to deliver software updates and pursue software pirates and
+                                   infringers.
+
+ Inclusivity & Diversity - Visit SolvNetPlus to read the "Synopsys Statement on
+            Inclusivity and Diversity" (Refer to article 000036315 at
+                        https://solvnetplus.synopsys.com)
+Initializing...
+Current time:       Mon Nov 16 21:26:48 2026
+Hostname:           fastx4-11.ews.illinois.edu
+CPU Model:          Intel(R) Xeon(R) Silver 4216 CPU @ 2.10GHz
+CPU Details:        Cores = 10 : Sockets = 1 : Cache Size = 22528 KB : Freq = 2.10 GHz
+OS:                 Linux 5.14.0-741.22.1.el9_9.x86_64
+RAM:                 23 GB (Free  11 GB)
+Swap:                 7 GB (Free   7 GB)
+Work Filesystem:    /home/bbianco3 mounted to ews-homes-inst-dr.engrit.illinois.edu:/ewshomes/fspool-b/bbianco3/linux
+Tmp Filesystem:     /tmp mounted to /dev/mapper/fastx4_11_sys-tmp
+Work Disk:           25 GB (Free  21 GB)
+Tmp Disk:             7 GB (Free   7 GB)
+
+CPU Load: 8%, Ram Free: 11 GB, Swap Free: 7 GB, Work Disk Free: 21 GB, Tmp Disk Free: 7 GB
+#------------------------------------------------------------------------------
+# synthesis.tcl -- Synopsys Design Compiler script for accel_top
+#
+# Normally run through `make synth` (hw/synth/synth.mk), which sets these
+# environment variables and runs dc_shell inside build/synth/<config>/:
+#
+#   ACCEL_RTL_DIR   path to hw/rtl (contains filelist.f)
+#   ACCEL_GEN_SRCS  generated RTL files to read before filelist.f (the SRAM wrapper)
+#   PDK             asap7 (default) | freepdk45 -> sources pdk/<PDK>.tcl
+#                   (ASAP7_DIR/ASAP7_CORNER/ASAP7_VT or STD_CELL_LIB, see there)
+#   CLK_PERIOD      clock period in ns, whatever the library unit (default 2.5)
+#   VLEN MAT_DIM NUM_TREGS NUM_ACCS MXU_ROWS HBM_DATA_W ICACHE_LINES
+#   NUM_CORES SPAD_KB NUM_VPUS NUM_MXUS FP_PIPE
+#                   RTL parameters                           (RTL defaults)
+#   SRAM            macro (default): scratchpads use the PDK's SRAM macros
+#                   flops: scratchpads are flip-flop arrays
+#   SYNTH_ELAB_ONLY 1 = stop after elaborate + check_design (fast syntax check)
+#
+# Outputs (current directory): reports/*.rpt, accel_top.ddc, accel_top.v,
+# accel_top.sdc. See docs/synthesis.md.
+#------------------------------------------------------------------------------
+proc env_or {name default} {
+  if {[info exists ::env($name)] && $::env($name) ne ""} { return $::env($name) }
+  return $default
+}
+set rtl_dir    [env_or ACCEL_RTL_DIR [file normalize [file dirname [info script]]/../rtl]]
+/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl
+set pdk        [env_or PDK asap7]
+asap7
+set clk_ns     [env_or CLK_PERIOD 2.5]
+1.2
+set elab_only  [env_or SYNTH_ELAB_ONLY 0]
+0
+set sram_mode  [env_or SRAM macro]
+macro
+# RTL parameters (only the ones that are set are passed to elaborate)
+set param_list {}
+foreach p {VLEN MAT_DIM NUM_TREGS NUM_ACCS MXU_ROWS HBM_DATA_W ICACHE_LINES NUM_CORES SPAD_KB
+           NUM_VPUS NUM_MXUS FP_PIPE} {
+  if {[info exists ::env($p)] && $::env($p) ne ""} { lappend param_list "$p=$::env($p)" }
+}
+set params [join $param_list ","]
+VLEN=64,MAT_DIM=4,NUM_TREGS=2,NUM_ACCS=1,MXU_ROWS=4,HBM_DATA_W=64,ICACHE_LINES=4,NUM_CORES=2,SPAD_KB=4,NUM_VPUS=2,NUM_MXUS=2,FP_PIPE=1
+#------------------------------------------------------------------------------
+# Libraries
+#------------------------------------------------------------------------------
+set pdk_file [file join [file dirname [file normalize [info script]]] pdk $pdk.tcl]
+/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/synth/pdk/asap7.tcl
+if {![file exists $pdk_file]} {
+  puts "ERROR: unknown PDK '$pdk' (no $pdk_file)"
+  exit 1
+}
+source $pdk_file
+puts "INFO: PDK $pdk_name, clock period $clk_ns ns"
+INFO: PDK ASAP7 RVT TT (0.7 V), clock period 1.2 ns
+set target_library    $pdk_target_libs
+/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_AO_RVT_TT_nldm_211120.db /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_INVBUF_RVT_TT_nldm_220122.db /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_OA_RVT_TT_nldm_211120.db /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_SEQ_RVT_TT_nldm_220123.db /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_SIMPLE_RVT_TT_nldm_211120.db
+set synthetic_library [list dw_foundation.sldb]
+dw_foundation.sldb
+set link_library      [concat "*" $target_library $synthetic_library]
+* /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_AO_RVT_TT_nldm_211120.db /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_INVBUF_RVT_TT_nldm_220122.db /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_OA_RVT_TT_nldm_211120.db /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_SEQ_RVT_TT_nldm_220123.db /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_SIMPLE_RVT_TT_nldm_211120.db dw_foundation.sldb
+# SRAM macros: link-only libraries + the RTL define that instantiates them.
+set rtl_defines {SYNTHESIS}
+SYNTHESIS
+if {$sram_mode eq "macro"} {
+  if {[llength $pdk_sram_libs] == 0} {
+    puts "ERROR: SRAM=macro but no SRAM macro libraries for PDK $pdk (run `make sram`, or use SRAM=flops)"
+    exit 1
+  }
+  set link_library [concat $link_library $pdk_sram_libs]
+  lappend rtl_defines ACCEL_SRAM_MACROS
+  puts "INFO: scratchpads use [llength $pdk_sram_libs] SRAM macro libraries"
+} else {
+  puts "INFO: scratchpads are flip-flop arrays (SRAM=flops)"
+}
+INFO: scratchpads use 12 SRAM macro libraries
+# alib = DC's library analysis cache. Reuse the PDK's if it has one; otherwise
+# the first compile builds ./alib-52 in the run directory (slow, once).
+if {$pdk_alib_dir ne ""} { set_app_var alib_library_analysis_path $pdk_alib_dir }
+/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/alib
+set_app_var hdlin_check_no_latch true
+true
+set_app_var compile_seqmap_propagate_constants false
+false
+define_design_lib WORK -path ./work
+1
+# Quiet a few lint messages that are expected in parameterised RTL.
+suppress_message {LINT-1 LINT-2 LINT-28 LINT-29 LINT-31 LINT-32 LINT-33 LINT-52 LINT-99}
+suppress_message {VER-130 VER-318 ELAB-311}
+#------------------------------------------------------------------------------
+# Read RTL (same file list as simulation)
+#------------------------------------------------------------------------------
+# generated sources first (the SRAM wrapper), then the design's file list
+set files [split [string trim [env_or ACCEL_GEN_SRCS ""]]]
+/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/build/gen/accel_sram_1rw.sv
+set fh [open $rtl_dir/filelist.f r]
+file16
+foreach line [split [read $fh] "\n"] {
+  set l [string trim $line]
+  if {$l eq "" || [string index $l 0] eq "#"} { continue }
+  lappend files [file join $rtl_dir $l]
+}
+close $fh
+puts "INFO: analyzing [llength $files] files from $rtl_dir"
+INFO: analyzing 12 files from /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl
+analyze -library WORK -format sverilog -define $rtl_defines $files
+Running PRESTO HDLC
+Compiling source file /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/build/gen/accel_sram_1rw.sv
+Compiling source file /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_pkg.sv
+Compiling source file /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_fp_pkg.sv
+Compiling source file /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_csr.sv
+Compiling source file /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_axi_master.sv
+Compiling source file /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_axi_arbiter.sv
+Compiling source file /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_spad.sv
+Compiling source file /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_vpu.sv
+Compiling source file /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_mxu.sv
+Compiling source file /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_icache.sv
+Compiling source file /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_core.sv
+Compiling source file /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_top.sv
+Presto compilation completed successfully.
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_AO_RVT_TT_nldm_211120.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_INVBUF_RVT_TT_nldm_220122.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_OA_RVT_TT_nldm_211120.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_SEQ_RVT_TT_nldm_220123.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_SIMPLE_RVT_TT_nldm_211120.db'
+Loading db file '/software/Synopsys-2024_x86_64/syn/W-2024.09/libraries/syn/dw_foundation.sldb'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_128x128_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_128x32_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_128x64_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_256x128_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_256x32_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_256x64_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_512x128_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_512x32_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_512x64_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_64x128_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_64x32_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_64x64_TT.db'
+1
+if {$params ne ""} {
+  puts "INFO: elaborating accel_top with $params"
+  elaborate accel_top -library WORK -parameters $params
+} else {
+  elaborate accel_top -library WORK
+}
+INFO: elaborating accel_top with VLEN=64,MAT_DIM=4,NUM_TREGS=2,NUM_ACCS=1,MXU_ROWS=4,HBM_DATA_W=64,ICACHE_LINES=4,NUM_CORES=2,SPAD_KB=4,NUM_VPUS=2,NUM_MXUS=2,FP_PIPE=1
+Loading db file '/software/Synopsys-2024_x86_64/syn/W-2024.09/libraries/syn/gtech.db'
+Loading db file '/software/Synopsys-2024_x86_64/syn/W-2024.09/libraries/syn/standard.sldb'
+  Loading link library 'asap7sc7p5t_AO_RVT_TT_nldm_211120'
+  Loading link library 'asap7sc7p5t_INVBUF_RVT_TT_nldm_211120'
+  Loading link library 'asap7sc7p5t_OA_RVT_TT_nldm_211120'
+  Loading link library 'asap7sc7p5t_SEQ_RVT_TT_nldm_220123'
+  Loading link library 'asap7sc7p5t_SIMPLE_RVT_TT_nldm_211120'
+  Loading link library 'sram1rw_128x128_TT'
+  Loading link library 'sram1rw_128x32_TT'
+  Loading link library 'sram1rw_128x64_TT'
+  Loading link library 'sram1rw_256x128_TT'
+  Loading link library 'sram1rw_256x32_TT'
+  Loading link library 'sram1rw_256x64_TT'
+  Loading link library 'sram1rw_512x128_TT'
+  Loading link library 'sram1rw_512x32_TT'
+  Loading link library 'sram1rw_512x64_TT'
+  Loading link library 'sram1rw_64x128_TT'
+  Loading link library 'sram1rw_64x32_TT'
+  Loading link library 'sram1rw_64x64_TT'
+  Loading link library 'gtech'
+Running PRESTO HDLC
+
+Inferred memory devices in process in routine 'accel_top_VLEN64_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_HBM_DATA_W64_ICACHE_LINES4_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_FP_PIPE1_SPAD_KB4' in file
+	 /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_top.sv'.
+==================================================================================
+|    Register Name    |   Type    | Width | Bus | MB |  Set  | Reset | ST | Line |
+==================================================================================
+|    ok_insn_q_reg    | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 321  |
+|      run_q_reg      | Flip-flop |   1   |  N  | N  | None  | None  | N  | 321  |
+|      err_q_reg      | Flip-flop |   1   |  N  | N  | None  | None  | N  | 321  |
+|   err_cause_q_reg   | Flip-flop |   8   |  Y  | N  | None  | None  | N  | 321  |
+|   err_core_q_reg    | Flip-flop |   8   |  Y  | N  | None  | None  | N  | 321  |
+|    err_pc_q_reg     | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 321  |
+|   err_insn_q_reg    | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 321  |
+|     ok_pc_q_reg     | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 321  |
+==================================================================================
+Presto compilation completed successfully. (accel_top_VLEN64_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_HBM_DATA_W64_ICACHE_LINES4_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_FP_PIPE1_SPAD_KB4)
+Module: accel_top_VLEN64_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_HBM_DATA_W64_ICACHE_LINES4_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_FP_PIPE1_SPAD_KB4, Ports: 367, Input: 149, Output: 218, Inout: 0
+Module: accel_top_VLEN64_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_HBM_DATA_W64_ICACHE_LINES4_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_FP_PIPE1_SPAD_KB4, Registers: 146, Async set/reset: 0, Sync set/reset: 0
+Information: Module report end. (ELAB-965)
+Elaborated 1 design.
+Current design is now 'accel_top_VLEN64_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_HBM_DATA_W64_ICACHE_LINES4_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_FP_PIPE1_SPAD_KB4'.
+Information: Building the design 'accel_csr' instantiated from design 'accel_top_VLEN64_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_HBM_DATA_W64_ICACHE_LINES4_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_FP_PIPE1_SPAD_KB4' with
+	the parameters "VLEN=64,MAT_DIM=4,NUM_TREGS=2,NUM_ACCS=1,MXU_ROWS=4,HBM_DATA_W=64,ICACHE_LINES=4,NUM_CORES=2,NUM_VPUS=2,NUM_MXUS=2,SPAD_KB=4". (HDL-193)
+
+Statistics for case statements in always block in file
+	'/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_csr.sv'
+============================================================
+|    Line    |  full/ parallel  |      block location      |
+============================================================
+|    163     |    user/user     | always block at line 147 |
+|    219     |    user/user     | always block at line 217 |
+============================================================
+
+Inferred memory devices in process in routine 'accel_csr_VLEN64_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_HBM_DATA_W64_ICACHE_LINES4_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_SPAD_KB4' in file
+	 /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_csr.sv'.
+==================================================================================
+|    Register Name    |   Type    | Width | Bus | MB |  Set  | Reset | ST | Line |
+==================================================================================
+|  s_axil_bvalid_reg  | Flip-flop |   1   |  N  | N  | None  | None  | N  | 101  |
+|     aw_held_reg     | Flip-flop |   1   |  N  | N  | None  | None  | N  | 101  |
+|     w_held_reg      | Flip-flop |   1   |  N  | N  | None  | None  | N  | 101  |
+|    aw_addr_q_reg    | Flip-flop |  12   |  Y  | N  | None  | None  | N  | 101  |
+|    w_data_q_reg     | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 101  |
+|     args_q_reg      | Flip-flop |  256  |  Y  | N  | None  | None  | N  | 147  |
+|     done_q_reg      | Flip-flop |   1   |  N  | N  | None  | None  | N  | 147  |
+|     error_q_reg     | Flip-flop |   1   |  N  | N  | None  | None  | N  | 147  |
+|    irq_en_q_reg     | Flip-flop |   1   |  N  | N  | None  | None  | N  | 147  |
+|     cause_q_reg     | Flip-flop |   8   |  Y  | N  | None  | None  | N  | 147  |
+|   err_core_q_reg    | Flip-flop |   8   |  Y  | N  | None  | None  | N  | 147  |
+|     cores_q_reg     | Flip-flop |   8   |  Y  | N  | None  | None  | N  | 147  |
+|   start_pc_q_reg    | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 147  |
+|    err_pc_q_reg     | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 147  |
+|   err_insn_q_reg    | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 147  |
+|    cycles_q_reg     | Flip-flop |  64   |  Y  | N  | None  | None  | N  | 147  |
+|  s_axil_rdata_reg   | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 246  |
+|  s_axil_rvalid_reg  | Flip-flop |   1   |  N  | N  | None  | None  | N  | 246  |
+==================================================================================
+Statistics for MUX_OPs
+=====================================================================================================================================================================
+|                                                        block name/line                                                          | Inputs | Outputs | # sel inputs |
+=====================================================================================================================================================================
+| accel_csr_VLEN64_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_HBM_DATA_W64_ICACHE_LINES4_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_SPAD_KB4/238 |   8    |   32    |      3       |
+=====================================================================================================================================================================
+Presto compilation completed successfully. (accel_csr_VLEN64_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_HBM_DATA_W64_ICACHE_LINES4_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_SPAD_KB4)
+Module: accel_csr_VLEN64_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_HBM_DATA_W64_ICACHE_LINES4_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_SPAD_KB4, Ports: 553, Input: 214, Output: 339, Inout: 0
+Module: accel_csr_VLEN64_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_HBM_DATA_W64_ICACHE_LINES4_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_SPAD_KB4, Registers: 523, Async set/reset: 0, Sync set/reset: 0
+Information: Module report end. (ELAB-965)
+Information: Building the design 'accel_core' instantiated from design 'accel_top_VLEN64_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_HBM_DATA_W64_ICACHE_LINES4_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_FP_PIPE1_SPAD_KB4' with
+	the parameters "CORE_ID=0,VLEN=64,HBM_DATA_W=64,NUM_VPUS=2,NUM_MXUS=2,MAT_DIM=4,NUM_TREGS=2,NUM_ACCS=1,MXU_ROWS=4,SPAD_KB=4,ICACHE_LINES=4". (HDL-193)
+Information: Loop optimization is performed. (ELAB-2057)
+Warning:  /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_core.sv:428: Statement unreachable (Branch condition impossible to meet).  (VER-61)
+Warning:  /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_core.sv:482: Statement unreachable (Branch condition impossible to meet).  (VER-61)
+
+Statistics for case statements in always block in file
+	'/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_core.sv'
+============================================================
+|    Line    |  full/ parallel  |      block location      |
+============================================================
+|    178     |    user/user     | always block at line 176 |
+|    275     |    user/user     | always block at line 272 |
+|    315     |    user/user     | always block at line 311 |
+|    327     |    user/user     | always block at line 311 |
+|    356     |    user/user     | always block at line 337 |
+|    429     |    user/user     | always block at line 337 |
+|    449     |    user/user     | always block at line 337 |
+|    483     |    user/user     | always block at line 337 |
+|    577     |    user/user     | always block at line 571 |
+|    612     |    user/user     | always block at line 611 |
+|    641     |    user/user     | always block at line 636 |
+|    707     |    user/user     | always block at line 673 |
+============================================================
+
+Inferred memory devices in process in routine 'accel_core_CORE_ID0_VLEN64_HBM_DATA_W64_NUM_VPUS2_NUM_MXUS2_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_SPAD_KB4_ICACHE_LINES4' in file
+	 /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_core.sv'.
+==================================================================================
+|    Register Name    |   Type    | Width | Bus | MB |  Set  | Reset | ST | Line |
+==================================================================================
+|      state_reg      | Flip-flop |   4   |  Y  | N  | None  | None  | N  | 673  |
+|       pc_reg        | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 673  |
+|      insn_reg       | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 673  |
+|       vl_reg        | Flip-flop |   3   |  Y  | N  | None  | None  | N  | 673  |
+|    ncores_q_reg     | Flip-flop |   8   |  Y  | N  | None  | None  | N  | 673  |
+|    cycle_cnt_reg    | Flip-flop |  64   |  Y  | N  | None  | None  | N  | 673  |
+|   instret_cnt_reg   | Flip-flop |  64   |  Y  | N  | None  | None  | N  | 673  |
+|    end_valid_reg    | Flip-flop |   1   |  N  | N  | None  | None  | N  | 673  |
+|    end_error_reg    | Flip-flop |   1   |  N  | N  | None  | None  | N  | 673  |
+|    end_cause_reg    | Flip-flop |   8   |  Y  | N  | None  | None  | N  | 673  |
+|     end_pc_reg      | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 673  |
+|    end_insn_reg     | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 673  |
+|      mrow_reg       | Flip-flop |   2   |  Y  | N  | None  | None  | N  | 673  |
+|      maddr_reg      | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 673  |
+|     ls_addr_reg     | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 673  |
+|    ls_write_reg     | Flip-flop |   1   |  N  | N  | None  | None  | N  | 673  |
+|     ls_data_reg     | Flip-flop |  64   |  Y  | N  | None  | None  | N  | 673  |
+|     ls_mask_reg     | Flip-flop |   8   |  Y  | N  | None  | None  | N  | 673  |
+|      xreg_reg       | Flip-flop | 1024  |  Y  | N  | None  | None  | N  | 673  |
+==================================================================================
+Statistics for MUX_OPs
+====================================================================================================================================================================
+|                                                        block name/line                                                         | Inputs | Outputs | # sel inputs |
+====================================================================================================================================================================
+| accel_core_CORE_ID0_VLEN64_HBM_DATA_W64_NUM_VPUS2_NUM_MXUS2_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_SPAD_KB4_ICACHE_LINES4/155 |   32   |   32    |      5       |
+| accel_core_CORE_ID0_VLEN64_HBM_DATA_W64_NUM_VPUS2_NUM_MXUS2_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_SPAD_KB4_ICACHE_LINES4/156 |   32   |   32    |      5       |
+====================================================================================================================================================================
+Presto compilation completed successfully. (accel_core_CORE_ID0_VLEN64_HBM_DATA_W64_NUM_VPUS2_NUM_MXUS2_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_SPAD_KB4_ICACHE_LINES4)
+Module: accel_core_CORE_ID0_VLEN64_HBM_DATA_W64_NUM_VPUS2_NUM_MXUS2_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_SPAD_KB4_ICACHE_LINES4, Ports: 614, Input: 368, Output: 246, Inout: 0
+Module: accel_core_CORE_ID0_VLEN64_HBM_DATA_W64_NUM_VPUS2_NUM_MXUS2_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_SPAD_KB4_ICACHE_LINES4, Registers: 1444, Async set/reset: 0, Sync set/reset: 0
+Information: Module report end. (ELAB-965)
+Information: Building the design 'accel_spad' instantiated from design 'accel_top_VLEN64_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_HBM_DATA_W64_ICACHE_LINES4_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_FP_PIPE1_SPAD_KB4' with
+	the parameters "HBM_DATA_W=64,SPAD_KB=4". (HDL-193)
+
+Inferred memory devices in process in routine 'accel_spad_HBM_DATA_W64_SPAD_KB4' in file
+	 /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_spad.sv'.
+==================================================================================
+|    Register Name    |   Type    | Width | Bus | MB |  Set  | Reset | ST | Line |
+==================================================================================
+|   spad_err_q_reg    | Flip-flop |   1   |  N  | N  | None  | None  | N  |  93  |
+|   spad_resp_q_reg   | Flip-flop |   1   |  N  | N  | None  | None  | N  |  93  |
+==================================================================================
+Presto compilation completed successfully. (accel_spad_HBM_DATA_W64_SPAD_KB4)
+Module: accel_spad_HBM_DATA_W64_SPAD_KB4, Ports: 348, Input: 175, Output: 173, Inout: 0
+Module: accel_spad_HBM_DATA_W64_SPAD_KB4, Registers: 2, Async set/reset: 0, Sync set/reset: 0
+Information: Module report end. (ELAB-965)
+Information: Building the design 'accel_axi_master' instantiated from design 'accel_top_VLEN64_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_HBM_DATA_W64_ICACHE_LINES4_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_FP_PIPE1_SPAD_KB4' with
+	the parameters "HBM_ADDR_W=32,HBM_DATA_W=64,HBM_ID_W=4,ID_VALUE=0". (HDL-193)
+
+Statistics for case statements in always block in file
+	'/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_axi_master.sv'
+============================================================
+|    Line    |  full/ parallel  |      block location      |
+============================================================
+|    114     |    user/user     | always block at line 100 |
+============================================================
+
+Inferred memory devices in process in routine 'accel_axi_master_HBM_ADDR_W32_HBM_DATA_W64_HBM_ID_W4_ID_VALUE0' in file
+	 /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_axi_master.sv'.
+==================================================================================
+|    Register Name    |   Type    | Width | Bus | MB |  Set  | Reset | ST | Line |
+==================================================================================
+|    resp_err_reg     | Flip-flop |   1   |  N  | N  | None  | None  | N  | 100  |
+|      state_reg      | Flip-flop |   3   |  Y  | N  | None  | None  | N  | 100  |
+|     addr_q_reg      | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 100  |
+|     wdata_q_reg     | Flip-flop |  64   |  Y  | N  | None  | None  | N  | 100  |
+|     wstrb_q_reg     | Flip-flop |   8   |  Y  | N  | None  | None  | N  | 100  |
+|     aw_done_reg     | Flip-flop |   1   |  N  | N  | None  | None  | N  | 100  |
+|     w_done_reg      | Flip-flop |   1   |  N  | N  | None  | None  | N  | 100  |
+|   resp_valid_reg    | Flip-flop |   1   |  N  | N  | None  | None  | N  | 100  |
+|   resp_rdata_reg    | Flip-flop |  64   |  Y  | N  | None  | None  | N  | 100  |
+==================================================================================
+Presto compilation completed successfully. (accel_axi_master_HBM_ADDR_W32_HBM_DATA_W64_HBM_ID_W4_ID_VALUE0)
+Module: accel_axi_master_HBM_ADDR_W32_HBM_DATA_W64_HBM_ID_W4_ID_VALUE0, Ports: 433, Input: 190, Output: 243, Inout: 0
+Module: accel_axi_master_HBM_ADDR_W32_HBM_DATA_W64_HBM_ID_W4_ID_VALUE0, Registers: 175, Async set/reset: 0, Sync set/reset: 0
+Information: Module report end. (ELAB-965)
+Information: Building the design 'accel_core' instantiated from design 'accel_top_VLEN64_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_HBM_DATA_W64_ICACHE_LINES4_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_FP_PIPE1_SPAD_KB4' with
+	the parameters "CORE_ID=1,VLEN=64,HBM_DATA_W=64,NUM_VPUS=2,NUM_MXUS=2,MAT_DIM=4,NUM_TREGS=2,NUM_ACCS=1,MXU_ROWS=4,SPAD_KB=4,ICACHE_LINES=4". (HDL-193)
+Information: Loop optimization is performed. (ELAB-2057)
+Warning:  /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_core.sv:428: Statement unreachable (Branch condition impossible to meet).  (VER-61)
+Warning:  /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_core.sv:482: Statement unreachable (Branch condition impossible to meet).  (VER-61)
+
+Statistics for case statements in always block in file
+	'/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_core.sv'
+============================================================
+|    Line    |  full/ parallel  |      block location      |
+============================================================
+|    178     |    user/user     | always block at line 176 |
+|    275     |    user/user     | always block at line 272 |
+|    315     |    user/user     | always block at line 311 |
+|    327     |    user/user     | always block at line 311 |
+|    356     |    user/user     | always block at line 337 |
+|    429     |    user/user     | always block at line 337 |
+|    449     |    user/user     | always block at line 337 |
+|    483     |    user/user     | always block at line 337 |
+|    577     |    user/user     | always block at line 571 |
+|    612     |    user/user     | always block at line 611 |
+|    641     |    user/user     | always block at line 636 |
+|    707     |    user/user     | always block at line 673 |
+============================================================
+
+Inferred memory devices in process in routine 'accel_core_CORE_ID1_VLEN64_HBM_DATA_W64_NUM_VPUS2_NUM_MXUS2_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_SPAD_KB4_ICACHE_LINES4' in file
+	 /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_core.sv'.
+==================================================================================
+|    Register Name    |   Type    | Width | Bus | MB |  Set  | Reset | ST | Line |
+==================================================================================
+|      state_reg      | Flip-flop |   4   |  Y  | N  | None  | None  | N  | 673  |
+|       pc_reg        | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 673  |
+|      insn_reg       | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 673  |
+|       vl_reg        | Flip-flop |   3   |  Y  | N  | None  | None  | N  | 673  |
+|    ncores_q_reg     | Flip-flop |   8   |  Y  | N  | None  | None  | N  | 673  |
+|    cycle_cnt_reg    | Flip-flop |  64   |  Y  | N  | None  | None  | N  | 673  |
+|   instret_cnt_reg   | Flip-flop |  64   |  Y  | N  | None  | None  | N  | 673  |
+|    end_valid_reg    | Flip-flop |   1   |  N  | N  | None  | None  | N  | 673  |
+|    end_error_reg    | Flip-flop |   1   |  N  | N  | None  | None  | N  | 673  |
+|    end_cause_reg    | Flip-flop |   8   |  Y  | N  | None  | None  | N  | 673  |
+|     end_pc_reg      | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 673  |
+|    end_insn_reg     | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 673  |
+|      mrow_reg       | Flip-flop |   2   |  Y  | N  | None  | None  | N  | 673  |
+|      maddr_reg      | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 673  |
+|     ls_addr_reg     | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 673  |
+|    ls_write_reg     | Flip-flop |   1   |  N  | N  | None  | None  | N  | 673  |
+|     ls_data_reg     | Flip-flop |  64   |  Y  | N  | None  | None  | N  | 673  |
+|     ls_mask_reg     | Flip-flop |   8   |  Y  | N  | None  | None  | N  | 673  |
+|      xreg_reg       | Flip-flop | 1024  |  Y  | N  | None  | None  | N  | 673  |
+==================================================================================
+Statistics for MUX_OPs
+====================================================================================================================================================================
+|                                                        block name/line                                                         | Inputs | Outputs | # sel inputs |
+====================================================================================================================================================================
+| accel_core_CORE_ID1_VLEN64_HBM_DATA_W64_NUM_VPUS2_NUM_MXUS2_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_SPAD_KB4_ICACHE_LINES4/155 |   32   |   32    |      5       |
+| accel_core_CORE_ID1_VLEN64_HBM_DATA_W64_NUM_VPUS2_NUM_MXUS2_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_SPAD_KB4_ICACHE_LINES4/156 |   32   |   32    |      5       |
+====================================================================================================================================================================
+Presto compilation completed successfully. (accel_core_CORE_ID1_VLEN64_HBM_DATA_W64_NUM_VPUS2_NUM_MXUS2_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_SPAD_KB4_ICACHE_LINES4)
+Module: accel_core_CORE_ID1_VLEN64_HBM_DATA_W64_NUM_VPUS2_NUM_MXUS2_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_SPAD_KB4_ICACHE_LINES4, Ports: 614, Input: 368, Output: 246, Inout: 0
+Module: accel_core_CORE_ID1_VLEN64_HBM_DATA_W64_NUM_VPUS2_NUM_MXUS2_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_SPAD_KB4_ICACHE_LINES4, Registers: 1444, Async set/reset: 0, Sync set/reset: 0
+Information: Module report end. (ELAB-965)
+Information: Building the design 'accel_axi_master' instantiated from design 'accel_top_VLEN64_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_HBM_DATA_W64_ICACHE_LINES4_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_FP_PIPE1_SPAD_KB4' with
+	the parameters "HBM_ADDR_W=32,HBM_DATA_W=64,HBM_ID_W=4,ID_VALUE=1". (HDL-193)
+
+Statistics for case statements in always block in file
+	'/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_axi_master.sv'
+============================================================
+|    Line    |  full/ parallel  |      block location      |
+============================================================
+|    114     |    user/user     | always block at line 100 |
+============================================================
+
+Inferred memory devices in process in routine 'accel_axi_master_HBM_ADDR_W32_HBM_DATA_W64_HBM_ID_W4_ID_VALUE1' in file
+	 /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_axi_master.sv'.
+==================================================================================
+|    Register Name    |   Type    | Width | Bus | MB |  Set  | Reset | ST | Line |
+==================================================================================
+|    resp_err_reg     | Flip-flop |   1   |  N  | N  | None  | None  | N  | 100  |
+|      state_reg      | Flip-flop |   3   |  Y  | N  | None  | None  | N  | 100  |
+|     addr_q_reg      | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 100  |
+|     wdata_q_reg     | Flip-flop |  64   |  Y  | N  | None  | None  | N  | 100  |
+|     wstrb_q_reg     | Flip-flop |   8   |  Y  | N  | None  | None  | N  | 100  |
+|     aw_done_reg     | Flip-flop |   1   |  N  | N  | None  | None  | N  | 100  |
+|     w_done_reg      | Flip-flop |   1   |  N  | N  | None  | None  | N  | 100  |
+|   resp_valid_reg    | Flip-flop |   1   |  N  | N  | None  | None  | N  | 100  |
+|   resp_rdata_reg    | Flip-flop |  64   |  Y  | N  | None  | None  | N  | 100  |
+==================================================================================
+Presto compilation completed successfully. (accel_axi_master_HBM_ADDR_W32_HBM_DATA_W64_HBM_ID_W4_ID_VALUE1)
+Module: accel_axi_master_HBM_ADDR_W32_HBM_DATA_W64_HBM_ID_W4_ID_VALUE1, Ports: 433, Input: 190, Output: 243, Inout: 0
+Module: accel_axi_master_HBM_ADDR_W32_HBM_DATA_W64_HBM_ID_W4_ID_VALUE1, Registers: 175, Async set/reset: 0, Sync set/reset: 0
+Information: Module report end. (ELAB-965)
+Information: Building the design 'accel_axi_arbiter' instantiated from design 'accel_top_VLEN64_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_HBM_DATA_W64_ICACHE_LINES4_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_FP_PIPE1_SPAD_KB4' with
+	the parameters "N=2,HBM_ADDR_W=32,HBM_DATA_W=64,HBM_ID_W=4". (HDL-193)
+
+Inferred memory devices in process in routine 'accel_axi_arbiter_N2_HBM_ADDR_W32_HBM_DATA_W64_HBM_ID_W4' in file
+	 /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_axi_arbiter.sv'.
+==================================================================================
+|    Register Name    |   Type    | Width | Bus | MB |  Set  | Reset | ST | Line |
+==================================================================================
+|     ar_ptr_reg      | Flip-flop |   1   |  N  | N  | None  | None  | N  | 135  |
+|     ar_held_reg     | Flip-flop |   1   |  N  | N  | None  | None  | N  | 135  |
+|    ar_sel_q_reg     | Flip-flop |   1   |  N  | N  | None  | None  | N  | 135  |
+|    w_done_q_reg     | Flip-flop |   1   |  N  | N  | None  | None  | N  | 200  |
+|     wr_held_reg     | Flip-flop |   1   |  N  | N  | None  | None  | N  | 200  |
+|    wr_sel_q_reg     | Flip-flop |   1   |  N  | N  | None  | None  | N  | 200  |
+|     wr_ptr_reg      | Flip-flop |   1   |  N  | N  | None  | None  | N  | 200  |
+|    aw_done_q_reg    | Flip-flop |   1   |  N  | N  | None  | None  | N  | 200  |
+==================================================================================
+Presto compilation completed successfully. (accel_axi_arbiter_N2_HBM_ADDR_W32_HBM_DATA_W64_HBM_ID_W4)
+Module: accel_axi_arbiter_N2_HBM_ADDR_W32_HBM_DATA_W64_HBM_ID_W4, Ports: 776, Input: 436, Output: 340, Inout: 0
+Module: accel_axi_arbiter_N2_HBM_ADDR_W32_HBM_DATA_W64_HBM_ID_W4, Registers: 8, Async set/reset: 0, Sync set/reset: 0
+Information: Module report end. (ELAB-965)
+Information: Building the design 'accel_icache' instantiated from design 'accel_core_CORE_ID0_VLEN64_HBM_DATA_W64_NUM_VPUS2_NUM_MXUS2_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_SPAD_KB4_ICACHE_LINES4' with
+	the parameters "LINES=4,HBM_DATA_W=64". (HDL-193)
+
+Inferred memory devices in process in routine 'accel_icache_LINES4_HBM_DATA_W64' in file
+	 /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_icache.sv'.
+==================================================================================
+|    Register Name    |   Type    | Width | Bus | MB |  Set  | Reset | ST | Line |
+==================================================================================
+|      valid_reg      | Flip-flop |   4   |  Y  | N  | None  | None  | N  |  85  |
+|       tag_reg       | Flip-flop |  108  |  Y  | N  | None  | None  | N  |  91  |
+|      data_reg       | Flip-flop |  256  |  Y  | N  | None  | None  | N  |  91  |
+==================================================================================
+Statistics for MUX_OPs
+=========================================================================
+|          block name/line            | Inputs | Outputs | # sel inputs |
+=========================================================================
+| accel_icache_LINES4_HBM_DATA_W64/75 |   4    |    1    |      2       |
+| accel_icache_LINES4_HBM_DATA_W64/75 |   4    |   27    |      2       |
+| accel_icache_LINES4_HBM_DATA_W64/76 |   4    |   64    |      2       |
+=========================================================================
+Presto compilation completed successfully. (accel_icache_LINES4_HBM_DATA_W64)
+Module: accel_icache_LINES4_HBM_DATA_W64, Ports: 165, Input: 132, Output: 33, Inout: 0
+Module: accel_icache_LINES4_HBM_DATA_W64, Registers: 368, Async set/reset: 0, Sync set/reset: 0
+Information: Module report end. (ELAB-965)
+Information: Building the design 'accel_vpu' instantiated from design 'accel_core_CORE_ID0_VLEN64_HBM_DATA_W64_NUM_VPUS2_NUM_MXUS2_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_SPAD_KB4_ICACHE_LINES4' with
+	the parameters "VLEN=64". (HDL-193)
+
+Statistics for case statements in always block in file
+	'/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_vpu.sv'
+============================================================
+|    Line    |  full/ parallel  |      block location      |
+============================================================
+|    136     |    auto/auto     | always block at line 132 |
+============================================================
+
+Inferred memory devices in process in routine 'accel_vpu_VLEN64' in file
+	 /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_vpu.sv'.
+==================================================================================
+|    Register Name    |   Type    | Width | Bus | MB |  Set  | Reset | ST | Line |
+==================================================================================
+|    s1_direct_reg    | Flip-flop |  64   |  Y  | N  | None  | None  | N  | 148  |
+|      s1_x_reg       | Flip-flop |  128  |  Y  | N  | None  | None  | N  | 148  |
+|      s1_y_reg       | Flip-flop |  128  |  Y  | N  | None  | None  | N  | 148  |
+|    s2_direct_reg    | Flip-flop |  64   |  Y  | N  | None  | None  | N  | 148  |
+|     s2_mid_reg      | Flip-flop |  388  |  Y  | N  | None  | None  | N  | 148  |
+|    s2_valid_reg     | Flip-flop |   1   |  N  | N  | None  | None  | N  | 165  |
+|    s0_valid_reg     | Flip-flop |   1   |  N  | N  | None  | None  | N  | 165  |
+|    s1_valid_reg     | Flip-flop |   1   |  N  | N  | None  | None  | N  | 165  |
+|     s0_mask_reg     | Flip-flop |   4   |  Y  | N  | None  | None  | N  | 165  |
+|      s0_op_reg      | Flip-flop |   7   |  Y  | N  | None  | None  | N  | 165  |
+|      s0_vd_reg      | Flip-flop |   5   |  Y  | N  | None  | None  | N  | 165  |
+|      s0_a_reg       | Flip-flop |  64   |  Y  | N  | None  | None  | N  | 165  |
+|      s0_b_reg       | Flip-flop |  64   |  Y  | N  | None  | None  | N  | 165  |
+|      s0_d_reg       | Flip-flop |  64   |  Y  | N  | None  | None  | N  | 165  |
+|     s1_mask_reg     | Flip-flop |   4   |  Y  | N  | None  | None  | N  | 165  |
+|   s1_use_add_reg    | Flip-flop |   1   |  N  | N  | None  | None  | N  | 165  |
+|      s1_vd_reg      | Flip-flop |   5   |  Y  | N  | None  | None  | N  | 165  |
+|     s2_mask_reg     | Flip-flop |   4   |  Y  | N  | None  | None  | N  | 165  |
+|   s2_use_add_reg    | Flip-flop |   1   |  N  | N  | None  | None  | N  | 165  |
+|      s2_vd_reg      | Flip-flop |   5   |  Y  | N  | None  | None  | N  | 165  |
+|     red_mid_reg     | Flip-flop |  97   |  Y  | N  | None  | None  | N  | 223  |
+|    red_busy_reg     | Flip-flop |   1   |  N  | N  | None  | None  | N  | 223  |
+|    red_phase_reg    | Flip-flop |   1   |  N  | N  | None  | None  | N  | 223  |
+|     red_idx_reg     | Flip-flop |   3   |  Y  | N  | None  | None  | N  | 223  |
+|    red_max_q_reg    | Flip-flop |   1   |  N  | N  | None  | None  | N  | 223  |
+|    red_vd_q_reg     | Flip-flop |   5   |  Y  | N  | None  | None  | N  | 223  |
+|    red_vs2_q_reg    | Flip-flop |   5   |  Y  | N  | None  | None  | N  | 223  |
+|     red_acc_reg     | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 223  |
+|      red_m_reg      | Flip-flop |  16   |  Y  | N  | None  | None  | N  | 223  |
+|      vreg_reg       | Flip-flop | 2048  |  Y  | N  | None  | None  | N  | 252  |
+==================================================================================
+Statistics for MUX_OPs
+==========================================================
+|   block name/line    | Inputs | Outputs | # sel inputs |
+==========================================================
+| accel_vpu_VLEN64/100 |   32   |   64    |      5       |
+| accel_vpu_VLEN64/101 |   32   |   64    |      5       |
+| accel_vpu_VLEN64/102 |   32   |   64    |      5       |
+| accel_vpu_VLEN64/216 |   32   |   16    |      5       |
+| accel_vpu_VLEN64/217 |   32   |   64    |      5       |
+| accel_vpu_VLEN64/265 |   32   |   64    |      5       |
+==========================================================
+Presto compilation completed successfully. (accel_vpu_VLEN64)
+Module: accel_vpu_VLEN64, Ports: 242, Input: 176, Output: 66, Inout: 0
+Module: accel_vpu_VLEN64, Registers: 3212, Async set/reset: 0, Sync set/reset: 0
+Information: Module report end. (ELAB-965)
+Information: Building the design 'accel_mxu' instantiated from design 'accel_core_CORE_ID0_VLEN64_HBM_DATA_W64_NUM_VPUS2_NUM_MXUS2_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_SPAD_KB4_ICACHE_LINES4' with
+	the parameters "MAT_DIM=4,NUM_TREGS=2,NUM_ACCS=1,MXU_ROWS=4". (HDL-193)
+
+Inferred memory devices in process in routine 'accel_mxu_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4' in file
+	 /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_mxu.sv'.
+==================================================================================
+|    Register Name    |   Type    | Width | Bus | MB |  Set  | Reset | ST | Line |
+==================================================================================
+|      tb_q_reg       | Flip-flop |   1   |  N  | N  | None  | None  | N  | 138  |
+|     issuing_reg     | Flip-flop |   1   |  N  | N  | None  | None  | N  | 138  |
+|     step_k_reg      | Flip-flop |   2   |  Y  | N  | None  | None  | N  | 138  |
+|     step_g_reg      | Flip-flop |   1   |  N  | N  | None  | None  | N  | 138  |
+|      acc_q_reg      | Flip-flop |   2   |  Y  | N  | None  | None  | N  | 138  |
+|      ta_q_reg       | Flip-flop |   1   |  N  | N  | None  | None  | N  | 138  |
+|       b0_reg        | Flip-flop |  64   |  Y  | N  | None  | None  | N  | 178  |
+|       a0_reg        | Flip-flop |  64   |  Y  | N  | None  | None  | N  | 186  |
+|      prod1_reg      | Flip-flop |  512  |  Y  | N  | None  | None  | N  | 191  |
+|      mid2_reg       | Flip-flop | 1552  |  Y  | N  | None  | None  | N  | 204  |
+|       g2_reg        | Flip-flop |   1   |  N  | N  | None  | None  | N  | 219  |
+|       v0_reg        | Flip-flop |   1   |  N  | N  | None  | None  | N  | 219  |
+|       v1_reg        | Flip-flop |   1   |  N  | N  | None  | None  | N  | 219  |
+|       v2_reg        | Flip-flop |   1   |  N  | N  | None  | None  | N  | 219  |
+|       g0_reg        | Flip-flop |   1   |  N  | N  | None  | None  | N  | 219  |
+|       g1_reg        | Flip-flop |   1   |  N  | N  | None  | None  | N  | 219  |
+|      treg_reg       | Flip-flop |  512  |  Y  | N  | None  | None  | N  | 240  |
+|      areg_reg       | Flip-flop |  512  |  Y  | N  | None  | None  | N  | 240  |
+==================================================================================
+Statistics for MUX_OPs
+===========================================================================================
+|                   block name/line                     | Inputs | Outputs | # sel inputs |
+===========================================================================================
+| accel_mxu_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4/115 |   4    |   64    |      2       |
+| accel_mxu_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4/112 |   4    |   128   |      2       |
+| accel_mxu_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4/176 |   4    |   64    |      2       |
+| accel_mxu_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4/187 |   4    |   64    |      2       |
+| accel_mxu_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4/187 |   4    |   64    |      2       |
+| accel_mxu_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4/187 |   4    |   64    |      2       |
+| accel_mxu_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4/187 |   4    |   64    |      2       |
+| accel_mxu_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4/201 |   4    |   128   |      2       |
+| accel_mxu_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4/201 |   4    |   128   |      2       |
+| accel_mxu_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4/201 |   4    |   128   |      2       |
+| accel_mxu_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4/201 |   4    |   128   |      2       |
+===========================================================================================
+Presto compilation completed successfully. (accel_mxu_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4)
+Module: accel_mxu_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4, Ports: 151, Input: 86, Output: 65, Inout: 0
+Module: accel_mxu_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4, Registers: 3230, Async set/reset: 0, Sync set/reset: 0
+Information: Module report end. (ELAB-965)
+Information: Building the design 'accel_sram_1rw' instantiated from design 'accel_spad_HBM_DATA_W64_SPAD_KB4' with
+	the parameters "DEPTH=512,WIDTH=64". (HDL-193)
+Presto compilation completed successfully. (accel_sram_1rw_DEPTH512_WIDTH64)
+Module: accel_sram_1rw_DEPTH512_WIDTH64, Ports: 204, Input: 140, Output: 64, Inout: 0
+Module: accel_sram_1rw_DEPTH512_WIDTH64, Registers: 0, Async set/reset: 0, Sync set/reset: 0
+Information: Module report end. (ELAB-965)
+1
+# Elaborating with parameters renames the design (accel_top_VLEN256...);
+# give it back its plain name so outputs are predictable.
+set elab_name [get_object_name [current_design]]
+Current design is 'accel_top_VLEN64_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_HBM_DATA_W64_ICACHE_LINES4_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_FP_PIPE1_SPAD_KB4'.
+accel_top_VLEN64_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_HBM_DATA_W64_ICACHE_LINES4_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_FP_PIPE1_SPAD_KB4
+if {$elab_name ne "accel_top"} { rename_design $elab_name accel_top }
+Information: Renaming design /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/build/synth/asap7_TT_RVT/v64_m4_t2_a1_r4_d64_i4_c2_s4_p1_1.2ns/accel_top_VLEN64_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_HBM_DATA_W64_ICACHE_LINES4_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_FP_PIPE1_SPAD_KB4.db:accel_top_VLEN64_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_HBM_DATA_W64_ICACHE_LINES4_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_FP_PIPE1_SPAD_KB4 to /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/build/synth/asap7_TT_RVT/v64_m4_t2_a1_r4_d64_i4_c2_s4_p1_1.2ns/accel_top_VLEN64_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_HBM_DATA_W64_ICACHE_LINES4_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_FP_PIPE1_SPAD_KB4.db:accel_top. (UIMG-45)
+Current design is 'accel_top'.
+1
+current_design accel_top
+Current design is 'accel_top'.
+{accel_top}
+link
+
+  Linking design 'accel_top'
+  Using the following designs and libraries:
+  --------------------------------------------------------------------------
+  * (12 designs)              /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/build/synth/asap7_TT_RVT/v64_m4_t2_a1_r4_d64_i4_c2_s4_p1_1.2ns/accel_top_VLEN64_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_HBM_DATA_W64_ICACHE_LINES4_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_FP_PIPE1_SPAD_KB4.db, etc
+  asap7sc7p5t_AO_RVT_TT_nldm_211120 (library) /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_AO_RVT_TT_nldm_211120.db
+  asap7sc7p5t_INVBUF_RVT_TT_nldm_211120 (library) /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_INVBUF_RVT_TT_nldm_220122.db
+  asap7sc7p5t_OA_RVT_TT_nldm_211120 (library) /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_OA_RVT_TT_nldm_211120.db
+  asap7sc7p5t_SEQ_RVT_TT_nldm_220123 (library) /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_SEQ_RVT_TT_nldm_220123.db
+  asap7sc7p5t_SIMPLE_RVT_TT_nldm_211120 (library) /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_SIMPLE_RVT_TT_nldm_211120.db
+  dw_foundation.sldb (library) /software/Synopsys-2024_x86_64/syn/W-2024.09/libraries/syn/dw_foundation.sldb
+  sram1rw_128x128_TT (library) /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_128x128_TT.db
+  sram1rw_128x32_TT (library) /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_128x32_TT.db
+  sram1rw_128x64_TT (library) /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_128x64_TT.db
+  sram1rw_256x128_TT (library) /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_256x128_TT.db
+  sram1rw_256x32_TT (library) /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_256x32_TT.db
+  sram1rw_256x64_TT (library) /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_256x64_TT.db
+  sram1rw_512x128_TT (library) /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_512x128_TT.db
+  sram1rw_512x32_TT (library) /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_512x32_TT.db
+  sram1rw_512x64_TT (library) /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_512x64_TT.db
+  sram1rw_64x128_TT (library) /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_64x128_TT.db
+  sram1rw_64x32_TT (library)  /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_64x32_TT.db
+  sram1rw_64x64_TT (library)  /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_64x64_TT.db
+
+1
+file mkdir reports
+check_design > reports/check_design.rpt
+if {$elab_only} {
+  puts "INFO: SYNTH_ELAB_ONLY set -- stopping after elaboration"
+  exit
+}
+#------------------------------------------------------------------------------
+# Constraints
+#------------------------------------------------------------------------------
+# CLK_PERIOD is in ns; libraries use their own time unit (ASAP7: ps).
+set clk_period [expr {$clk_ns * $pdk_time_scale}]
+1200.0
+create_clock -name clk -period $clk_period [get_ports clk]
+1
+# Setup-only uncertainty: with an ideal (pre-CTS) clock, hold is checked but
+# not fixed here -- hold buffers are inserted after clock-tree synthesis in
+# place & route, where real clock skew is known.
+set_clock_uncertainty -setup [expr {0.02 * $clk_period}] [get_clocks clk]
+1
+set non_clk_inputs [remove_from_collection [all_inputs] [get_ports clk]]
+{rst_n s_axil_awaddr[11] s_axil_awaddr[10] s_axil_awaddr[9] s_axil_awaddr[8] s_axil_awaddr[7] s_axil_awaddr[6] s_axil_awaddr[5] s_axil_awaddr[4] s_axil_awaddr[3] s_axil_awaddr[2] s_axil_awaddr[1] s_axil_awaddr[0] s_axil_awvalid s_axil_wdata[31] s_axil_wdata[30] s_axil_wdata[29] s_axil_wdata[28] s_axil_wdata[27] s_axil_wdata[26] s_axil_wdata[25] s_axil_wdata[24] s_axil_wdata[23] s_axil_wdata[22] s_axil_wdata[21] s_axil_wdata[20] s_axil_wdata[19] s_axil_wdata[18] s_axil_wdata[17] s_axil_wdata[16] s_axil_wdata[15] s_axil_wdata[14] s_axil_wdata[13] s_axil_wdata[12] s_axil_wdata[11] s_axil_wdata[10] s_axil_wdata[9] s_axil_wdata[8] s_axil_wdata[7] s_axil_wdata[6] s_axil_wdata[5] s_axil_wdata[4] s_axil_wdata[3] s_axil_wdata[2] s_axil_wdata[1] s_axil_wdata[0] s_axil_wstrb[3] s_axil_wstrb[2] s_axil_wstrb[1] s_axil_wstrb[0] s_axil_wvalid s_axil_bready s_axil_araddr[11] s_axil_araddr[10] s_axil_araddr[9] s_axil_araddr[8] s_axil_araddr[7] s_axil_araddr[6] s_axil_araddr[5] s_axil_araddr[4] s_axil_araddr[3] s_axil_araddr[2] s_axil_araddr[1] s_axil_araddr[0] s_axil_arvalid s_axil_rready m_axi_awready m_axi_wready m_axi_bid[3] m_axi_bid[2] m_axi_bid[1] m_axi_bid[0] m_axi_bresp[1] m_axi_bresp[0] m_axi_bvalid m_axi_arready m_axi_rid[3] m_axi_rid[2] m_axi_rid[1] m_axi_rid[0] m_axi_rdata[63] m_axi_rdata[62] m_axi_rdata[61] m_axi_rdata[60] m_axi_rdata[59] m_axi_rdata[58] m_axi_rdata[57] m_axi_rdata[56] m_axi_rdata[55] m_axi_rdata[54] m_axi_rdata[53] m_axi_rdata[52] m_axi_rdata[51] m_axi_rdata[50] m_axi_rdata[49] m_axi_rdata[48] m_axi_rdata[47] m_axi_rdata[46] m_axi_rdata[45] m_axi_rdata[44] ...}
+set_input_delay  [expr {0.2 * $clk_period}] -clock clk $non_clk_inputs
+1
+set_output_delay [expr {0.2 * $clk_period}] -clock clk [all_outputs]
+1
+set_load $pdk_output_load [all_outputs]
+1
+if {$pdk_driving_cell ne ""} {
+  set_driving_cell -lib_cell $pdk_driving_cell $non_clk_inputs
+}
+Warning: Design rule attributes from the driving cell will be set on the port 'rst_n'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_awaddr[11]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_awaddr[10]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_awaddr[9]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_awaddr[8]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_awaddr[7]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_awaddr[6]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_awaddr[5]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_awaddr[4]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_awaddr[3]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_awaddr[2]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_awaddr[1]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_awaddr[0]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_awvalid'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[31]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[30]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[29]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[28]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[27]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[26]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[25]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[24]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[23]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[22]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[21]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[20]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[19]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[18]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[17]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[16]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[15]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[14]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[13]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[12]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[11]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[10]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[9]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[8]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[7]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[6]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[5]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[4]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[3]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[2]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[1]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[0]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wstrb[3]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wstrb[2]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wstrb[1]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wstrb[0]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wvalid'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_bready'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_araddr[11]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_araddr[10]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_araddr[9]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_araddr[8]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_araddr[7]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_araddr[6]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_araddr[5]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_araddr[4]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_araddr[3]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_araddr[2]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_araddr[1]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_araddr[0]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_arvalid'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_rready'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_awready'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_wready'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_bid[3]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_bid[2]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_bid[1]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_bid[0]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_bresp[1]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_bresp[0]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_bvalid'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_arready'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rid[3]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rid[2]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rid[1]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rid[0]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[63]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[62]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[61]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[60]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[59]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[58]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[57]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[56]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[55]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[54]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[53]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[52]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[51]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[50]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[49]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[48]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[47]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[46]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[45]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[44]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[43]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[42]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[41]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[40]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[39]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[38]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[37]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[36]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[35]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[34]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[33]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[32]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[31]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[30]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[29]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[28]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[27]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[26]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[25]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[24]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[23]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[22]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[21]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[20]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[19]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[18]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[17]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[16]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[15]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[14]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[13]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[12]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[11]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[10]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[9]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[8]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[7]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[6]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[5]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[4]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[3]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[2]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[1]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[0]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rresp[1]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rresp[0]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rlast'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rvalid'. (UID-401)
+1
+foreach pat $pdk_dont_use {
+  set cells [get_lib_cells -quiet $pat]
+  if {[sizeof_collection $cells] > 0} { set_dont_use $cells }
+}
+# Reset is a synchronous, high-fanout net: treat it as ideal here and let
+# physical design build the tree.
+set_ideal_network [get_ports rst_n]
+1
+write_sdc accel_top.sdc
+1
+#------------------------------------------------------------------------------
+# Compile
+#------------------------------------------------------------------------------
+compile_ultra -no_autoungroup
+Information: Performing leakage power optimization. (PWR-850)
+CPU Load: 10%, Ram Free: 11 GB, Swap Free: 7 GB, Work Disk Free: 21 GB, Tmp Disk Free: 7 GB
+Alib files are up-to-date.
+Information: Evaluating DesignWare library utilization. (UISN-27)
+
+============================================================================
+| DesignWare Building Block Library  |         Version         | Available |
+============================================================================
+| Basic DW Building Blocks           | W-2024.09-DWBB_202409.0 |     *     |
+| Licensed DW Building Blocks        | W-2024.09-DWBB_202409.0 |     *     |
+============================================================================
+
+====================================================================================================
+| Flow Information                                                                                 |
+----------------------------------------------------------------------------------------------------
+| Flow         | Design Compiler WLM                                                               |
+| Command Line | compile_ultra -no_autoungroup                                                     |
+====================================================================================================
+| Design Information                                      | Value                                  |
+====================================================================================================
+| Number of Scenarios                                     | 0                                      |
+| Leaf Cell Count                                         | 64348                                  |
+| Number of User Hierarchies                              | 16                                     |
+| Sequential Cell Count                                   | 17541                                  |
+| Macro Count                                             | 0                                      |
+| Number of Power Domains                                 | 0                                      |
+| Number of Path Groups                                   | 2                                      |
+| Number of VT Class                                      | 0                                      |
+| Number of Clocks                                        | 1                                      |
+| Number of Dont Touch Cells                              | 10489                                  |
+| Number of Dont Touch Nets                               | 60                                     |
+| Number of Size Only Cells                               | 0                                      |
+| Design with UPF Data                                    | false                                  |
+====================================================================================================
+Information: Sequential output inversion is enabled.  SVF file must be used for formal verification. (OPT-1208)
+
+
+Information: Uniquified 2 instances of design 'accel_spad_HBM_DATA_W64_SPAD_KB4'. (OPT-1056)
+Information: Uniquified 2 instances of design 'accel_icache_LINES4_HBM_DATA_W64'. (OPT-1056)
+Information: Uniquified 2 instances of design 'accel_vpu_VLEN64'. (OPT-1056)
+Information: Uniquified 2 instances of design 'accel_mxu_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4'. (OPT-1056)
+Information: Uniquified 2 instances of design 'accel_sram_1rw_DEPTH512_WIDTH64'. (OPT-1056)
+  Simplifying Design 'accel_top'
+
+  Loading target library 'asap7sc7p5t_AO_RVT_TT_nldm_211120'
+  Loading target library 'asap7sc7p5t_OA_RVT_TT_nldm_211120'
+  Loading target library 'asap7sc7p5t_SEQ_RVT_TT_nldm_220123'
+  Loading target library 'asap7sc7p5t_SIMPLE_RVT_TT_nldm_211120'
+LNC WARNING: Found output_to_output lib arc on FAx1_ASAP7_75t_R.
+Loaded alib file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/alib/alib-52/asap7sc7p5t_AO_RVT_TT_nldm_211120.db.alib' (placeholder)
+Loaded alib file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/alib/alib-52/asap7sc7p5t_INVBUF_RVT_TT_nldm_220122.db.alib' (placeholder)
+Loaded alib file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/alib/alib-52/asap7sc7p5t_OA_RVT_TT_nldm_211120.db.alib' (placeholder)
+Loaded alib file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/alib/alib-52/asap7sc7p5t_SEQ_RVT_TT_nldm_220123.db.alib' (placeholder)
+Loaded alib file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/alib/alib-52/asap7sc7p5t_SIMPLE_RVT_TT_nldm_211120.db.alib' (placeholder)
+Warning: Only placeholder alibs were found. Proceeding with library analysis. (OPT-1311)
+CPU Load: 10%, Ram Free: 11 GB, Swap Free: 7 GB, Work Disk Free: 21 GB, Tmp Disk Free: 7 GB
+Information: State dependent leakage is now switched from on to off.
+
+  Beginning Pass 1 Mapping
+  ------------------------
+  Processing 'accel_mxu_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_0'
+Information: Added key list 'DesignWare' to design 'accel_mxu_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_0'. (DDB-72)
+ Implement Synthetic for 'accel_mxu_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_0'.
+  Processing 'accel_mxu_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_1'
+Information: Added key list 'DesignWare' to design 'accel_mxu_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_1'. (DDB-72)
+ Implement Synthetic for 'accel_mxu_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_1'.
+  Processing 'accel_vpu_VLEN64_0'
+Information: Added key list 'DesignWare' to design 'accel_vpu_VLEN64_0'. (DDB-72)
+ Implement Synthetic for 'accel_vpu_VLEN64_0'.
+  Processing 'accel_core_CORE_ID1_VLEN64_HBM_DATA_W64_NUM_VPUS2_NUM_MXUS2_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_SPAD_KB4_ICACHE_LINES4'
+Information: Added key list 'DesignWare' to design 'accel_core_CORE_ID1_VLEN64_HBM_DATA_W64_NUM_VPUS2_NUM_MXUS2_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_SPAD_KB4_ICACHE_LINES4'. (DDB-72)
+Information: In design 'accel_core_CORE_ID1_VLEN64_HBM_DATA_W64_NUM_VPUS2_NUM_MXUS2_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_SPAD_KB4_ICACHE_LINES4', the register 'end_cause_reg[7]' is removed because it is merged to 'end_cause_reg[3]'. (OPT-1215)
+Information: In design 'accel_core_CORE_ID1_VLEN64_HBM_DATA_W64_NUM_VPUS2_NUM_MXUS2_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_SPAD_KB4_ICACHE_LINES4', the register 'end_cause_reg[6]' is removed because it is merged to 'end_cause_reg[3]'. (OPT-1215)
+Information: In design 'accel_core_CORE_ID1_VLEN64_HBM_DATA_W64_NUM_VPUS2_NUM_MXUS2_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_SPAD_KB4_ICACHE_LINES4', the register 'end_cause_reg[5]' is removed because it is merged to 'end_cause_reg[3]'. (OPT-1215)
+Information: In design 'accel_core_CORE_ID1_VLEN64_HBM_DATA_W64_NUM_VPUS2_NUM_MXUS2_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_SPAD_KB4_ICACHE_LINES4', the register 'end_cause_reg[4]' is removed because it is merged to 'end_cause_reg[3]'. (OPT-1215)
+ Implement Synthetic for 'accel_core_CORE_ID1_VLEN64_HBM_DATA_W64_NUM_VPUS2_NUM_MXUS2_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_SPAD_KB4_ICACHE_LINES4'.
+  Processing 'accel_core_CORE_ID0_VLEN64_HBM_DATA_W64_NUM_VPUS2_NUM_MXUS2_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_SPAD_KB4_ICACHE_LINES4'
+Information: Added key list 'DesignWare' to design 'accel_core_CORE_ID0_VLEN64_HBM_DATA_W64_NUM_VPUS2_NUM_MXUS2_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_SPAD_KB4_ICACHE_LINES4'. (DDB-72)
+Information: In design 'accel_core_CORE_ID0_VLEN64_HBM_DATA_W64_NUM_VPUS2_NUM_MXUS2_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_SPAD_KB4_ICACHE_LINES4', the register 'end_cause_reg[7]' is removed because it is merged to 'end_cause_reg[3]'. (OPT-1215)
+Information: In design 'accel_core_CORE_ID0_VLEN64_HBM_DATA_W64_NUM_VPUS2_NUM_MXUS2_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_SPAD_KB4_ICACHE_LINES4', the register 'end_cause_reg[6]' is removed because it is merged to 'end_cause_reg[3]'. (OPT-1215)
+Information: In design 'accel_core_CORE_ID0_VLEN64_HBM_DATA_W64_NUM_VPUS2_NUM_MXUS2_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_SPAD_KB4_ICACHE_LINES4', the register 'end_cause_reg[5]' is removed because it is merged to 'end_cause_reg[3]'. (OPT-1215)
+Information: In design 'accel_core_CORE_ID0_VLEN64_HBM_DATA_W64_NUM_VPUS2_NUM_MXUS2_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_SPAD_KB4_ICACHE_LINES4', the register 'end_cause_reg[4]' is removed because it is merged to 'end_cause_reg[3]'. (OPT-1215)
+ Implement Synthetic for 'accel_core_CORE_ID0_VLEN64_HBM_DATA_W64_NUM_VPUS2_NUM_MXUS2_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_SPAD_KB4_ICACHE_LINES4'.
+  Processing 'accel_csr_VLEN64_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_HBM_DATA_W64_ICACHE_LINES4_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_SPAD_KB4'
+ Implement Synthetic for 'accel_csr_VLEN64_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_HBM_DATA_W64_ICACHE_LINES4_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_SPAD_KB4'.
+Information: Added key list 'DesignWare' to design 'accel_csr_VLEN64_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_HBM_DATA_W64_ICACHE_LINES4_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_SPAD_KB4'. (DDB-72)
+  Processing 'accel_top'
+Information: In design 'accel_top', the register 'err_core_q_reg[2]' is removed because it is merged to 'err_core_q_reg[1]'. (OPT-1215)
+Information: In design 'accel_top', the register 'err_core_q_reg[3]' is removed because it is merged to 'err_core_q_reg[1]'. (OPT-1215)
+Information: In design 'accel_top', the register 'err_core_q_reg[4]' is removed because it is merged to 'err_core_q_reg[1]'. (OPT-1215)
+Information: In design 'accel_top', the register 'err_core_q_reg[5]' is removed because it is merged to 'err_core_q_reg[1]'. (OPT-1215)
+Information: In design 'accel_top', the register 'err_core_q_reg[6]' is removed because it is merged to 'err_core_q_reg[1]'. (OPT-1215)
+Information: In design 'accel_top', the register 'err_core_q_reg[7]' is removed because it is merged to 'err_core_q_reg[1]'. (OPT-1215)
+ Implement Synthetic for 'accel_top'.
+  Processing 'accel_icache_LINES4_HBM_DATA_W64_0'
+Information: Added key list 'DesignWare' to design 'accel_icache_LINES4_HBM_DATA_W64_0'. (DDB-72)
+  Processing 'accel_axi_arbiter_N2_HBM_ADDR_W32_HBM_DATA_W64_HBM_ID_W4'
+Information: Added key list 'DesignWare' to design 'accel_axi_arbiter_N2_HBM_ADDR_W32_HBM_DATA_W64_HBM_ID_W4'. (DDB-72)
+  Processing 'accel_sram_1rw_DEPTH512_WIDTH64_0'
+  Processing 'accel_axi_master_HBM_ADDR_W32_HBM_DATA_W64_HBM_ID_W4_ID_VALUE1'
+Information: In design 'accel_axi_master_HBM_ADDR_W32_HBM_DATA_W64_HBM_ID_W4_ID_VALUE1', the register 'addr_q_reg[2]' is removed because it is merged to 'addr_q_reg[1]'. (OPT-1215)
+  Processing 'accel_axi_master_HBM_ADDR_W32_HBM_DATA_W64_HBM_ID_W4_ID_VALUE0'
+Information: In design 'accel_axi_master_HBM_ADDR_W32_HBM_DATA_W64_HBM_ID_W4_ID_VALUE0', the register 'addr_q_reg[2]' is removed because it is merged to 'addr_q_reg[1]'. (OPT-1215)
+  Processing 'accel_spad_HBM_DATA_W64_SPAD_KB4_0'
+CPU Load: 13%, Ram Free: 11 GB, Swap Free: 7 GB, Work Disk Free: 21 GB, Tmp Disk Free: 7 GB
+
+  Updating timing information
+Information: Updating design information... (UID-85)
+Information: The library cell 'TIELOx1_ASAP7_75t_R' in the library 'asap7sc7p5t_SIMPLE_RVT_TT_nldm_211120' is not characterized for internal power. (PWR-536)
+Information: The library cell 'TIEHIx1_ASAP7_75t_R' in the library 'asap7sc7p5t_SIMPLE_RVT_TT_nldm_211120' is not characterized for internal power. (PWR-536)
+Information: The target library(s) contains cell(s), other than black boxes, that are not characterized for internal power. (PWR-24)
+Information: Complementing port 'm_awid[0]' in design 'accel_axi_arbiter_N2_HBM_ADDR_W32_HBM_DATA_W64_HBM_ID_W4'.
+	 The new name of the port is 'm_awid[0]_BAR'. (OPT-319)
+Information: Complementing port 'm_arid[0]' in design 'accel_axi_arbiter_N2_HBM_ADDR_W32_HBM_DATA_W64_HBM_ID_W4'.
+	 The new name of the port is 'm_arid[0]_BAR'. (OPT-319)
+Information: Complementing port 'busy' in design 'accel_core_CORE_ID1_VLEN64_HBM_DATA_W64_NUM_VPUS2_NUM_MXUS2_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_SPAD_KB4_ICACHE_LINES4'.
+	 The new name of the port is 'busy_BAR'. (OPT-319)
+Information: Complementing port 'busy' in design 'accel_core_CORE_ID0_VLEN64_HBM_DATA_W64_NUM_VPUS2_NUM_MXUS2_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_SPAD_KB4_ICACHE_LINES4'.
+	 The new name of the port is 'busy_BAR'. (OPT-319)
+Information: Complementing port 'abort' in design 'accel_core_CORE_ID0_VLEN64_HBM_DATA_W64_NUM_VPUS2_NUM_MXUS2_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_SPAD_KB4_ICACHE_LINES4'.
+	 The new name of the port is 'abort_BAR'. (OPT-319)
+Information: Complementing port 'abort' in design 'accel_core_CORE_ID1_VLEN64_HBM_DATA_W64_NUM_VPUS2_NUM_MXUS2_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_SPAD_KB4_ICACHE_LINES4'.
+	 The new name of the port is 'abort_BAR'. (OPT-319)
+Information: Complementing port 'abort_BAR' in design 'accel_core_CORE_ID1_VLEN64_HBM_DATA_W64_NUM_VPUS2_NUM_MXUS2_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_SPAD_KB4_ICACHE_LINES4'.
+	 The new name of the port is 'abort'. (OPT-319)
+Information: Complementing port 'abort_BAR' in design 'accel_core_CORE_ID0_VLEN64_HBM_DATA_W64_NUM_VPUS2_NUM_MXUS2_MAT_DIM4_NUM_TREGS2_NUM_ACCS1_MXU_ROWS4_SPAD_KB4_ICACHE_LINES4'.
+	 The new name of the port is 'abort'. (OPT-319)
+
+  Beginning Mapping Optimizations  (Ultra High effort)
+  -------------------------------
+Information: Updating design information... (UID-85)
+Warning: Only placeholder alibs were found. Proceeding with library analysis. (OPT-1311)

@@ -533,12 +533,22 @@ module accel_core
   //===========================================================================
   // Memory request (MEM state) and response data (MEM_WAIT / FETCH_WAIT)
   //===========================================================================
-  logic [OFF_W-1:0]      mem_off;          // byte offset inside the beat
+  // EXEC computes the load/store request (address, data, byte mask) and
+  // REGISTERS it (ls_*). MEM then drives the memory port straight from those
+  // registers, so the long "register read -> address add" path ends at a
+  // flip-flop instead of running on through the scratchpad decode and into
+  // the AXI master. It costs no extra cycle: MEM already followed EXEC.
   logic [BYTES-1:0]      st_mask;          // which bytes the store writes (before shift)
   logic [HBM_DATA_W-1:0] st_data;          // store data (before shift)
   logic [HBM_DATA_W-1:0] ld_shifted;       // response beat shifted down to the access
 
-  assign mem_off = mem_addr[OFF_W-1:0];
+  logic [31:0]           ls_addr;          // registered in EXEC, used in MEM / MEM_WAIT
+  logic                  ls_write;
+  logic [HBM_DATA_W-1:0] ls_data;
+  logic [BYTES-1:0]      ls_mask;
+  logic [OFF_W-1:0]      ls_off;           // byte offset inside the beat
+
+  assign ls_off = ls_addr[OFF_W-1:0];
 
   always_comb begin
     st_mask = '0;
@@ -569,12 +579,12 @@ module accel_core
         mem_req_valid = (pc[1:0] == 2'b00) && !abort && !ic_hit;   // misses only
         mem_req_addr  = pc;
       end
-      S_MEM: begin
+      S_MEM: begin                                   // all from registers
         mem_req_valid = 1'b1;
-        mem_req_write = mem_write;
-        mem_req_addr  = mem_addr;
-        mem_req_wdata = st_data << {mem_off, 3'b000};
-        mem_req_wstrb = st_mask << mem_off;
+        mem_req_write = ls_write;
+        mem_req_addr  = ls_addr;
+        mem_req_wdata = ls_data << {ls_off, 3'b000};
+        mem_req_wstrb = ls_mask << ls_off;
       end
       S_MROW: begin
         mem_req_valid = 1'b1;
@@ -587,7 +597,7 @@ module accel_core
     endcase
   end
 
-  assign ld_shifted = mem_resp_rdata >> {mem_off, 3'b000};
+  assign ld_shifted = mem_resp_rdata >> {ls_off, 3'b000};
 
   // mld: the row from memory goes into the MXU
   logic [HBM_DATA_W-1:0] mrow_shifted;
@@ -676,6 +686,10 @@ module accel_core
       end_insn    <= '0;
       mrow        <= '0;
       maddr       <= '0;
+      ls_addr     <= '0;
+      ls_write    <= 1'b0;
+      ls_data     <= '0;
+      ls_mask     <= '0;
       for (int i = 0; i < 32; i++) xreg[i] <= '0;
     end else begin
       end_valid <= 1'b0;                          // pulse
@@ -723,8 +737,13 @@ module accel_core
 
         // ---- execute ----
         S_EXEC: begin
-          if (ex_mem)
-            state <= S_MEM;
+          if (ex_mem) begin
+            ls_addr  <= mem_addr;                   // register the request
+            ls_write <= mem_write;
+            ls_data  <= st_data;
+            ls_mask  <= st_mask;
+            state    <= S_MEM;
+          end
           else if (ex_vred)
             state <= S_VRED;                        // VPU reduction started
           else if (ex_mrow) begin

@@ -15,7 +15,7 @@
 //                  rd_col = 1 reads COLUMN rd_row instead (.t forms)
 //   3. Compute     cmd_zero:  acc[cmd_acc] = 0, done in that cycle    (mzero)
 //                  cmd_macc:  acc[cmd_acc] += tile[cmd_ta] x tile[cmd_tb]
-//                             busy for MAT_DIM*MAT_DIM/MXU_ROWS + 2 cycles (mmacc)
+//                             busy for MAT_DIM*MAT_DIM/MXU_ROWS + 3 cycles (mmacc)
 //
 // mmacc schedule. One output element is
 //     acc[i][j] = add32(...add32(add32(acc[i][j], a[i][0]*b[0][j]), a[i][1]*b[1][j])...)
@@ -28,11 +28,12 @@
 // Every element still sees k in ascending order, so MXU_ROWS changes the
 // speed and the area but never the result.
 //
-// Pipeline. Each step goes through three registered stages:
+// Pipeline. Each step goes through four registered stages:
 //
-//   issue (cycle t)   : select a[i][k], b[k][j]; multiply      -> prod1
-//   stage 2 (t+1)     : read acc row; fp32_add_align           -> mid2
-//   stage 3 (t+2)     : fp32_add_finish; write the acc row
+//   issue (cycle t)   : select a[i][k], b[k][j]                -> a0, b0
+//   stage 1 (t+1)     : multiply                               -> prod1
+//   stage 2 (t+2)     : read acc row; fp32_add_align           -> mid2
+//   stage 3 (t+3)     : fp32_add_finish; write the acc row
 //
 // A step reads its accumulator rows in stage 2 and writes them in stage 3.
 // The same row group is issued again only GROUPS cycles later, so its stage
@@ -126,13 +127,13 @@ module accel_mxu
   logic [G_W-1:0]   step_g;
   logic [1:0]       acc_q, ta_q, tb_q;
   logic             last_step;
-  logic             v1, v2;           // pipeline stage valid bits
+  logic             v0, v1, v2;       // pipeline stage valid bits
 
   assign last_step = (step_k == IDX_W'(D - 1)) && (step_g == G_W'(GROUPS - 1));
   // GROUPS = 1 would read a row before its previous update is written: wait a cycle
-  assign issue     = issuing && ((GROUPS >= 2) || !v1);
+  assign issue     = issuing && ((GROUPS >= 2) || !v0);
   // busy until the last step has left the pipeline
-  assign busy      = issuing || v1 || v2;
+  assign busy      = issuing || v0 || v1 || v2;
 
   always_ff @(posedge clk) begin
     if (!rst_n) begin
@@ -166,23 +167,29 @@ module accel_mxu
   //   row i = g*MXU_ROWS + r,   column j,   k = step_k
   //   acc[i][j] <- add32(acc[i][j], mul(a[i][k], b[k][j]))
 
-  // ---- issue: select operands and multiply -> prod1 ----
-  logic [ROW_W-1:0]  b_row;                   // row k of tile b, shared by all MACs
+  // ---- issue: select operands -> a0, b0 ----
+  logic [ROW_W-1:0]  b_row, b0;               // row k of tile b, shared by all MACs
+  logic [15:0]       a0 [MXU_ROWS];           // a[i][k], one per MAC row
   logic [31:0]       prod1 [MXU_ROWS][D];     // registered products
-  logic [G_W-1:0]    g1, g2;                  // row group in stages 2 and 3
+  logic [G_W-1:0]    g0, g1, g2;              // row group in stages 1, 2 and 3
 
   assign b_row = treg[tb_q][step_k];
 
+  always_ff @(posedge clk)
+    if (issue) b0 <= b_row;
+
   for (genvar r = 0; r < MXU_ROWS; r++) begin : g_mul_row
     logic [IDX_W-1:0] i;
-    logic [15:0]      a_ik;
 
-    assign i    = IDX_W'(step_g * MXU_ROWS + r);
-    assign a_ik = treg[ta_q][i][16*step_k +: 16];
+    assign i = IDX_W'(step_g * MXU_ROWS + r);
 
+    always_ff @(posedge clk)
+      if (issue) a0[r] <= treg[ta_q][i][16*step_k +: 16];
+
+    // ---- stage 1: multiply -> prod1 ----
     for (genvar j = 0; j < D; j++) begin : g_mul
       always_ff @(posedge clk)
-        if (issue) prod1[r][j] <= bf16_mul_fp32(a_ik, b_row[16*j +: 16]);
+        if (v0) prod1[r][j] <= bf16_mul_fp32(a0[r], b0[16*j +: 16]);
     end
   end
 
@@ -211,14 +218,18 @@ module accel_mxu
   // ---- pipeline control ----
   always_ff @(posedge clk) begin
     if (!rst_n) begin
+      v0 <= 1'b0;
       v1 <= 1'b0;
       v2 <= 1'b0;
+      g0 <= '0;
       g1 <= '0;
       g2 <= '0;
     end else begin
-      v1 <= issue;
+      v0 <= issue;
+      v1 <= v0;
       v2 <= v1;
-      if (issue) g1 <= step_g;
+      if (issue) g0 <= step_g;
+      if (v0)    g1 <= g0;
       if (v1)    g2 <= g1;
     end
   end

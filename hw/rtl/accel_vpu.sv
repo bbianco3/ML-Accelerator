@@ -21,13 +21,13 @@
 //
 // Lanes i >= vl are never written ("tail undisturbed").
 //
-// Element-wise operations go through a three-stage pipeline per lane:
-//   stage 1 (the cycle ar_en is high): read operands, multiply / prepare the
-//            two adder inputs, or compute the result directly (mul, max,
-//            min, mv need no adder)                         -> s1_* registers
+// Element-wise operations go through a four-stage pipeline per lane:
+//   stage 0 (the cycle ar_en is high): read the operand registers -> s0_*
+//   stage 1: multiply / prepare the two adder inputs, or compute the result
+//            directly (mul, max, min, mv need no adder)    -> s1_* registers
 //   stage 2: fp32_add_align                                 -> s2_* registers
 //   stage 3: fp32_add_finish, round to bf16, write vd lanes i < vl
-// ar_busy is high while an operation is in stages 2-3; the core waits for it
+// ar_busy is high while an operation is in stages 1-3; the core waits for it
 // before the next instruction, so nothing can read vd too early.
 //
 // Reductions process ONE element per step, strictly in order 0, 1, ...,
@@ -101,7 +101,11 @@ module accel_vpu
   assign vd_old = vreg[ar_vd];
   assign vb     = ar_vf ? {VLMAX{ar_scalar}} : vreg[ar_vs1];
 
-  logic              s1_valid, s2_valid;
+  logic              s0_valid, s1_valid, s2_valid;
+  logic [6:0]        s0_op;
+  logic [4:0]        s0_vd;
+  logic [VLMAX-1:0]  s0_mask;
+  logic [VLEN-1:0]   s0_a, s0_b, s0_d;           // registered operands
   logic              s1_use_add, s2_use_add;     // result comes from the adder
   logic [4:0]        s1_vd, s2_vd;
   logic [VLMAX-1:0]  s1_mask, s2_mask;           // lanes i < vl
@@ -112,16 +116,16 @@ module accel_vpu
   logic [VLEN-1:0]   s3_result;
 
   logic use_add;
-  assign use_add = (ar_op == VOP_ADD) || (ar_op == VOP_SUB) || (ar_op == VOP_MACC);
+  assign use_add = (s0_op == VOP_ADD) || (s0_op == VOP_SUB) || (s0_op == VOP_MACC);
 
   for (genvar i = 0; i < VLMAX; i++) begin : g_lane
     logic [15:0] a, b, d;
     logic [31:0] x, y, fb;
     logic [15:0] direct;
 
-    assign a  = va[16*i +: 16];
-    assign b  = vb[16*i +: 16];
-    assign d  = vd_old[16*i +: 16];
+    assign a  = s0_a[16*i +: 16];
+    assign b  = s0_b[16*i +: 16];
+    assign d  = s0_d[16*i +: 16];
     assign fb = bf16_to_fp32(b);
 
     // stage 1: adder inputs, or the finished result
@@ -129,7 +133,7 @@ module accel_vpu
       x      = '0;
       y      = '0;
       direct = d;
-      case (ar_op)
+      case (s0_op)
         VOP_ADD:  begin x = bf16_to_fp32(a);    y = fb;                    end
         VOP_SUB:  begin x = bf16_to_fp32(a);    y = {~fb[31], fb[30:0]};   end
         VOP_MACC: begin x = bf16_mul_fp32(a, b); y = bf16_to_fp32(d);      end
@@ -142,7 +146,7 @@ module accel_vpu
     end
 
     always_ff @(posedge clk) begin
-      if (ar_en) begin                                 // -> stage 1 registers
+      if (s0_valid) begin                              // -> stage 1 registers
         s1_x[i]      <= x;
         s1_y[i]      <= y;
         s1_direct[i] <= direct;
@@ -160,16 +164,26 @@ module accel_vpu
 
   always_ff @(posedge clk) begin
     if (!rst_n) begin
+      s0_valid <= 1'b0;
       s1_valid <= 1'b0;
       s2_valid <= 1'b0;
     end else begin
-      s1_valid <= ar_en;
+      s0_valid <= ar_en;
+      s1_valid <= s0_valid;
       s2_valid <= s1_valid;
     end
-    if (ar_en) begin
+    if (ar_en) begin                                   // -> stage 0 registers
+      s0_op <= ar_op;
+      s0_vd <= ar_vd;
+      s0_a  <= va;
+      s0_b  <= vb;
+      s0_d  <= vd_old;
+      for (int i = 0; i < VLMAX; i++) s0_mask[i] <= (i < vl);
+    end
+    if (s0_valid) begin
       s1_use_add <= use_add;
-      s1_vd      <= ar_vd;
-      for (int i = 0; i < VLMAX; i++) s1_mask[i] <= (i < vl);
+      s1_vd      <= s0_vd;
+      s1_mask    <= s0_mask;
     end
     if (s1_valid) begin
       s2_use_add <= s1_use_add;
@@ -178,7 +192,7 @@ module accel_vpu
     end
   end
 
-  assign ar_busy = s1_valid || s2_valid;
+  assign ar_busy = s0_valid || s1_valid || s2_valid;
 
   //---------------------------------------------------------------------------
   // Reduction engine: one element per step, in order, two cycles per step
