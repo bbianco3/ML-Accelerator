@@ -1,0 +1,1705 @@
+asap7_setup: ready: /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT
+sram_setup: ready: /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT (datasheet: /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/datasheet_TT.md)
+cd /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/build/synth/asap7_TT_RVT/v256_m16_t4_a2_r4_d256_i16_c2_s16_p1_1.2ns && \
+  ACCEL_RTL_DIR=/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl ACCEL_GEN_SRCS="/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/build/gen/accel_sram_1rw.sv" CLK_PERIOD=1.2 PDK=asap7 SRAM=macro \
+  ASAP7_DIR=/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7 ASAP7_CORNER=TT ASAP7_VT=RVT \
+  VLEN=256 MAT_DIM=16 NUM_TREGS=4 NUM_ACCS=2 \
+  MXU_ROWS=4 HBM_DATA_W=256 ICACHE_LINES=16 \
+  NUM_CORES=2 SPAD_KB=16 \
+  NUM_VPUS=2 NUM_MXUS=2 FP_PIPE=1 \
+  dc_shell -f /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/synth/synthesis.tcl 2>&1 | tee synth.log
+Info: [VCS_SAVE_RESTORE_INFO] ASLR (Address Space Layout Randomization) is detected on the machine. To enable $save functionality, ASLR will be switched off and simv re-executed.
+Please use '-no_save' simv switch to avoid this.
+
+                           Design Compiler Graphical 
+                                 DC Ultra (TM)
+                                  DFTMAX (TM)
+                              Power Compiler (TM)
+                                 DesignWare (R)
+                                 DC Expert (TM)
+                               Design Vision (TM)
+                               HDL Compiler (TM)
+                               VHDL Compiler (TM)
+                                  DFT Compiler
+                               Design Compiler(R)
+
+                 Version W-2024.09 for linux64 - Aug 27, 2024 
+
+                    Copyright (c) 1988 - 2024 Synopsys, Inc.
+   This software and the associated documentation are proprietary to Synopsys,
+ Inc. This software may only be used in accordance with the terms and conditions
+ of a written license agreement with Synopsys, Inc. All other use, reproduction,
+   or distribution of this software is strictly prohibited.  Licensed Products
+     communicate with Synopsys servers for the purpose of providing software
+    updates, detecting software piracy and verifying that customers are using
+    Licensed Products in conformity with the applicable License Key for such
+  Licensed Products. Synopsys will use information gathered in connection with
+    this process to deliver software updates and pursue software pirates and
+                                   infringers.
+
+ Inclusivity & Diversity - Visit SolvNetPlus to read the "Synopsys Statement on
+            Inclusivity and Diversity" (Refer to article 000036315 at
+                        https://solvnetplus.synopsys.com)
+Initializing...
+Current time:       Tue Nov 17 19:39:31 2026
+Hostname:           fastx4-19.ews.illinois.edu
+CPU Model:          Intel(R) Xeon(R) Silver 4216 CPU @ 2.10GHz
+CPU Details:        Cores = 10 : Sockets = 1 : Cache Size = 22528 KB : Freq = 2.10 GHz
+OS:                 Linux 5.14.0-741.22.1.el9_9.x86_64
+RAM:                 23 GB (Free  12 GB)
+Swap:                 7 GB (Free   7 GB)
+Work Filesystem:    /home/bbianco3 mounted to ews-homes-inst-dr.engrit.illinois.edu:/ewshomes/fspool-b/bbianco3/linux
+Tmp Filesystem:     /tmp mounted to /dev/mapper/fastx4_19_sys-tmp
+Work Disk:           25 GB (Free  21 GB)
+Tmp Disk:             7 GB (Free   7 GB)
+
+CPU Load: 7%, Ram Free: 12 GB, Swap Free: 7 GB, Work Disk Free: 21 GB, Tmp Disk Free: 7 GB
+#------------------------------------------------------------------------------
+# synthesis.tcl -- Synopsys Design Compiler script for accel_top
+#
+# Normally run through `make synth` (hw/synth/synth.mk), which sets these
+# environment variables and runs dc_shell inside build/synth/<config>/:
+#
+#   ACCEL_RTL_DIR   path to hw/rtl (contains filelist.f)
+#   ACCEL_GEN_SRCS  generated RTL files to read before filelist.f (the SRAM wrapper)
+#   PDK             asap7 (default) | freepdk45 -> sources pdk/<PDK>.tcl
+#                   (ASAP7_DIR/ASAP7_CORNER/ASAP7_VT or STD_CELL_LIB, see there)
+#   CLK_PERIOD      clock period in ns, whatever the library unit (default 2.5)
+#   VLEN MAT_DIM NUM_TREGS NUM_ACCS MXU_ROWS HBM_DATA_W ICACHE_LINES
+#   NUM_CORES SPAD_KB NUM_VPUS NUM_MXUS FP_PIPE
+#                   RTL parameters                           (RTL defaults)
+#   SRAM            macro (default): scratchpads use the PDK's SRAM macros
+#                   flops: scratchpads are flip-flop arrays
+#   SYNTH_ELAB_ONLY 1 = stop after elaborate + check_design (fast syntax check)
+#
+# Outputs (current directory): reports/*.rpt, accel_top.ddc, accel_top.v,
+# accel_top.sdc. See docs/synthesis.md.
+#------------------------------------------------------------------------------
+proc env_or {name default} {
+  if {[info exists ::env($name)] && $::env($name) ne ""} { return $::env($name) }
+  return $default
+}
+set rtl_dir    [env_or ACCEL_RTL_DIR [file normalize [file dirname [info script]]/../rtl]]
+/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl
+set pdk        [env_or PDK asap7]
+asap7
+set clk_ns     [env_or CLK_PERIOD 2.5]
+1.2
+set elab_only  [env_or SYNTH_ELAB_ONLY 0]
+0
+set sram_mode  [env_or SRAM macro]
+macro
+# RTL parameters (only the ones that are set are passed to elaborate)
+set param_list {}
+foreach p {VLEN MAT_DIM NUM_TREGS NUM_ACCS MXU_ROWS HBM_DATA_W ICACHE_LINES NUM_CORES SPAD_KB
+           NUM_VPUS NUM_MXUS FP_PIPE} {
+  if {[info exists ::env($p)] && $::env($p) ne ""} { lappend param_list "$p=$::env($p)" }
+}
+set params [join $param_list ","]
+VLEN=256,MAT_DIM=16,NUM_TREGS=4,NUM_ACCS=2,MXU_ROWS=4,HBM_DATA_W=256,ICACHE_LINES=16,NUM_CORES=2,SPAD_KB=16,NUM_VPUS=2,NUM_MXUS=2,FP_PIPE=1
+#------------------------------------------------------------------------------
+# Libraries
+#------------------------------------------------------------------------------
+set pdk_file [file join [file dirname [file normalize [info script]]] pdk $pdk.tcl]
+/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/synth/pdk/asap7.tcl
+if {![file exists $pdk_file]} {
+  puts "ERROR: unknown PDK '$pdk' (no $pdk_file)"
+  exit 1
+}
+source $pdk_file
+puts "INFO: PDK $pdk_name, clock period $clk_ns ns"
+INFO: PDK ASAP7 RVT TT (0.7 V), clock period 1.2 ns
+set target_library    $pdk_target_libs
+/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_AO_RVT_TT_nldm_211120.db /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_INVBUF_RVT_TT_nldm_220122.db /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_OA_RVT_TT_nldm_211120.db /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_SEQ_RVT_TT_nldm_220123.db /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_SIMPLE_RVT_TT_nldm_211120.db
+set synthetic_library [list dw_foundation.sldb]
+dw_foundation.sldb
+set link_library      [concat "*" $target_library $synthetic_library]
+* /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_AO_RVT_TT_nldm_211120.db /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_INVBUF_RVT_TT_nldm_220122.db /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_OA_RVT_TT_nldm_211120.db /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_SEQ_RVT_TT_nldm_220123.db /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_SIMPLE_RVT_TT_nldm_211120.db dw_foundation.sldb
+# SRAM macros: link-only libraries + the RTL define that instantiates them.
+set rtl_defines {SYNTHESIS}
+SYNTHESIS
+if {$sram_mode eq "macro"} {
+  if {[llength $pdk_sram_libs] == 0} {
+    puts "ERROR: SRAM=macro but no SRAM macro libraries for PDK $pdk (run `make sram`, or use SRAM=flops)"
+    exit 1
+  }
+  set link_library [concat $link_library $pdk_sram_libs]
+  lappend rtl_defines ACCEL_SRAM_MACROS
+  puts "INFO: scratchpads use [llength $pdk_sram_libs] SRAM macro libraries"
+} else {
+  puts "INFO: scratchpads are flip-flop arrays (SRAM=flops)"
+}
+INFO: scratchpads use 12 SRAM macro libraries
+# alib = DC's library analysis cache. Reuse the PDK's if it has one; otherwise
+# the first compile builds ./alib-52 in the run directory (slow, once).
+if {$pdk_alib_dir ne ""} { set_app_var alib_library_analysis_path $pdk_alib_dir }
+/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/alib
+set_app_var hdlin_check_no_latch true
+true
+set_app_var compile_seqmap_propagate_constants false
+false
+define_design_lib WORK -path ./work
+1
+# Quiet a few lint messages that are expected in parameterised RTL.
+suppress_message {LINT-1 LINT-2 LINT-28 LINT-29 LINT-31 LINT-32 LINT-33 LINT-52 LINT-99}
+suppress_message {VER-130 VER-318 ELAB-311}
+#------------------------------------------------------------------------------
+# Read RTL (same file list as simulation)
+#------------------------------------------------------------------------------
+# generated sources first (the SRAM wrapper), then the design's file list
+set files [split [string trim [env_or ACCEL_GEN_SRCS ""]]]
+/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/build/gen/accel_sram_1rw.sv
+set fh [open $rtl_dir/filelist.f r]
+file16
+foreach line [split [read $fh] "\n"] {
+  set l [string trim $line]
+  if {$l eq "" || [string index $l 0] eq "#"} { continue }
+  lappend files [file join $rtl_dir $l]
+}
+close $fh
+puts "INFO: analyzing [llength $files] files from $rtl_dir"
+INFO: analyzing 12 files from /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl
+analyze -library WORK -format sverilog -define $rtl_defines $files
+Running PRESTO HDLC
+Compiling source file /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/build/gen/accel_sram_1rw.sv
+Compiling source file /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_pkg.sv
+Compiling source file /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_fp_pkg.sv
+Compiling source file /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_csr.sv
+Compiling source file /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_axi_master.sv
+Compiling source file /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_axi_arbiter.sv
+Compiling source file /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_spad.sv
+Compiling source file /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_vpu.sv
+Compiling source file /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_mxu.sv
+Compiling source file /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_icache.sv
+Compiling source file /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_core.sv
+Compiling source file /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_top.sv
+Presto compilation completed successfully.
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_AO_RVT_TT_nldm_211120.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_INVBUF_RVT_TT_nldm_220122.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_OA_RVT_TT_nldm_211120.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_SEQ_RVT_TT_nldm_220123.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_SIMPLE_RVT_TT_nldm_211120.db'
+Loading db file '/software/Synopsys-2024_x86_64/syn/W-2024.09/libraries/syn/dw_foundation.sldb'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_128x128_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_128x32_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_128x64_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_256x128_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_256x32_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_256x64_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_512x128_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_512x32_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_512x64_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_64x128_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_64x32_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_64x64_TT.db'
+1
+if {$params ne ""} {
+  puts "INFO: elaborating accel_top with $params"
+  elaborate accel_top -library WORK -parameters $params
+} else {
+  elaborate accel_top -library WORK
+}
+INFO: elaborating accel_top with VLEN=256,MAT_DIM=16,NUM_TREGS=4,NUM_ACCS=2,MXU_ROWS=4,HBM_DATA_W=256,ICACHE_LINES=16,NUM_CORES=2,SPAD_KB=16,NUM_VPUS=2,NUM_MXUS=2,FP_PIPE=1
+Loading db file '/software/Synopsys-2024_x86_64/syn/W-2024.09/libraries/syn/gtech.db'
+Loading db file '/software/Synopsys-2024_x86_64/syn/W-2024.09/libraries/syn/standard.sldb'
+  Loading link library 'asap7sc7p5t_AO_RVT_TT_nldm_211120'
+  Loading link library 'asap7sc7p5t_INVBUF_RVT_TT_nldm_211120'
+  Loading link library 'asap7sc7p5t_OA_RVT_TT_nldm_211120'
+  Loading link library 'asap7sc7p5t_SEQ_RVT_TT_nldm_220123'
+  Loading link library 'asap7sc7p5t_SIMPLE_RVT_TT_nldm_211120'
+  Loading link library 'sram1rw_128x128_TT'
+  Loading link library 'sram1rw_128x32_TT'
+  Loading link library 'sram1rw_128x64_TT'
+  Loading link library 'sram1rw_256x128_TT'
+  Loading link library 'sram1rw_256x32_TT'
+  Loading link library 'sram1rw_256x64_TT'
+  Loading link library 'sram1rw_512x128_TT'
+  Loading link library 'sram1rw_512x32_TT'
+  Loading link library 'sram1rw_512x64_TT'
+  Loading link library 'sram1rw_64x128_TT'
+  Loading link library 'sram1rw_64x32_TT'
+  Loading link library 'sram1rw_64x64_TT'
+  Loading link library 'gtech'
+Running PRESTO HDLC
+
+Inferred memory devices in process in routine 'accel_top_VLEN256_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_HBM_DATA_W256_ICACHE_LINES16_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_FP_PIPE1_SPAD_KB16' in file
+	 /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_top.sv'.
+==================================================================================
+|    Register Name    |   Type    | Width | Bus | MB |  Set  | Reset | ST | Line |
+==================================================================================
+|    ok_insn_q_reg    | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 321  |
+|      run_q_reg      | Flip-flop |   1   |  N  | N  | None  | None  | N  | 321  |
+|      err_q_reg      | Flip-flop |   1   |  N  | N  | None  | None  | N  | 321  |
+|   err_cause_q_reg   | Flip-flop |   8   |  Y  | N  | None  | None  | N  | 321  |
+|   err_core_q_reg    | Flip-flop |   8   |  Y  | N  | None  | None  | N  | 321  |
+|    err_pc_q_reg     | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 321  |
+|   err_insn_q_reg    | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 321  |
+|     ok_pc_q_reg     | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 321  |
+==================================================================================
+Presto compilation completed successfully. (accel_top_VLEN256_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_HBM_DATA_W256_ICACHE_LINES16_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_FP_PIPE1_SPAD_KB16)
+Module: accel_top_VLEN256_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_HBM_DATA_W256_ICACHE_LINES16_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_FP_PIPE1_SPAD_KB16, Ports: 775, Input: 341, Output: 434, Inout: 0
+Module: accel_top_VLEN256_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_HBM_DATA_W256_ICACHE_LINES16_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_FP_PIPE1_SPAD_KB16, Registers: 146, Async set/reset: 0, Sync set/reset: 0
+Information: Module report end. (ELAB-965)
+Elaborated 1 design.
+Current design is now 'accel_top_VLEN256_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_HBM_DATA_W256_ICACHE_LINES16_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_FP_PIPE1_SPAD_KB16'.
+Information: Building the design 'accel_csr' instantiated from design 'accel_top_VLEN256_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_HBM_DATA_W256_ICACHE_LINES16_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_FP_PIPE1_SPAD_KB16' with
+	the parameters PARAM_ID = 1. (HDL-193)
+
+Statistics for case statements in always block in file
+	'/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_csr.sv'
+============================================================
+|    Line    |  full/ parallel  |      block location      |
+============================================================
+|    163     |    user/user     | always block at line 147 |
+|    219     |    user/user     | always block at line 217 |
+============================================================
+
+Inferred memory devices in process in routine 'accel_csr_VLEN256_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_HBM_DATA_W256_ICACHE_LINES16_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_SPAD_KB16' in file
+	 /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_csr.sv'.
+==================================================================================
+|    Register Name    |   Type    | Width | Bus | MB |  Set  | Reset | ST | Line |
+==================================================================================
+|  s_axil_bvalid_reg  | Flip-flop |   1   |  N  | N  | None  | None  | N  | 101  |
+|     aw_held_reg     | Flip-flop |   1   |  N  | N  | None  | None  | N  | 101  |
+|     w_held_reg      | Flip-flop |   1   |  N  | N  | None  | None  | N  | 101  |
+|    aw_addr_q_reg    | Flip-flop |  12   |  Y  | N  | None  | None  | N  | 101  |
+|    w_data_q_reg     | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 101  |
+|     args_q_reg      | Flip-flop |  256  |  Y  | N  | None  | None  | N  | 147  |
+|     done_q_reg      | Flip-flop |   1   |  N  | N  | None  | None  | N  | 147  |
+|     error_q_reg     | Flip-flop |   1   |  N  | N  | None  | None  | N  | 147  |
+|    irq_en_q_reg     | Flip-flop |   1   |  N  | N  | None  | None  | N  | 147  |
+|     cause_q_reg     | Flip-flop |   8   |  Y  | N  | None  | None  | N  | 147  |
+|   err_core_q_reg    | Flip-flop |   8   |  Y  | N  | None  | None  | N  | 147  |
+|     cores_q_reg     | Flip-flop |   8   |  Y  | N  | None  | None  | N  | 147  |
+|   start_pc_q_reg    | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 147  |
+|    err_pc_q_reg     | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 147  |
+|   err_insn_q_reg    | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 147  |
+|    cycles_q_reg     | Flip-flop |  64   |  Y  | N  | None  | None  | N  | 147  |
+|  s_axil_rdata_reg   | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 246  |
+|  s_axil_rvalid_reg  | Flip-flop |   1   |  N  | N  | None  | None  | N  | 246  |
+==================================================================================
+Statistics for MUX_OPs
+==========================================================================================================================================================================
+|                                                           block name/line                                                            | Inputs | Outputs | # sel inputs |
+==========================================================================================================================================================================
+| accel_csr_VLEN256_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_HBM_DATA_W256_ICACHE_LINES16_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_SPAD_KB16/238 |   8    |   32    |      3       |
+==========================================================================================================================================================================
+Presto compilation completed successfully. (accel_csr_VLEN256_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_HBM_DATA_W256_ICACHE_LINES16_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_SPAD_KB16)
+Module: accel_csr_VLEN256_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_HBM_DATA_W256_ICACHE_LINES16_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_SPAD_KB16, Ports: 553, Input: 214, Output: 339, Inout: 0
+Module: accel_csr_VLEN256_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_HBM_DATA_W256_ICACHE_LINES16_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_SPAD_KB16, Registers: 523, Async set/reset: 0, Sync set/reset: 0
+Information: Module report end. (ELAB-965)
+Information: Building the design 'accel_core' instantiated from design 'accel_top_VLEN256_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_HBM_DATA_W256_ICACHE_LINES16_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_FP_PIPE1_SPAD_KB16' with
+	the parameters "CORE_ID=0,VLEN=256,HBM_DATA_W=256,NUM_VPUS=2,NUM_MXUS=2,MAT_DIM=16,NUM_TREGS=4,NUM_ACCS=2,MXU_ROWS=4,SPAD_KB=16,ICACHE_LINES=16". (HDL-193)
+Information: Loop optimization is performed. (ELAB-2057)
+Warning:  /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_core.sv:428: Statement unreachable (Branch condition impossible to meet).  (VER-61)
+Warning:  /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_core.sv:482: Statement unreachable (Branch condition impossible to meet).  (VER-61)
+
+Statistics for case statements in always block in file
+	'/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_core.sv'
+============================================================
+|    Line    |  full/ parallel  |      block location      |
+============================================================
+|    178     |    user/user     | always block at line 176 |
+|    275     |    user/user     | always block at line 272 |
+|    315     |    user/user     | always block at line 311 |
+|    327     |    user/user     | always block at line 311 |
+|    356     |    user/user     | always block at line 337 |
+|    429     |    user/user     | always block at line 337 |
+|    449     |    user/user     | always block at line 337 |
+|    483     |    user/user     | always block at line 337 |
+|    577     |    user/user     | always block at line 571 |
+|    612     |    user/user     | always block at line 611 |
+|    641     |    user/user     | always block at line 636 |
+|    707     |    user/user     | always block at line 673 |
+============================================================
+
+Inferred memory devices in process in routine 'accel_core_CORE_ID0_VLEN256_HBM_DATA_W256_NUM_VPUS2_NUM_MXUS2_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_SPAD_KB16_ICACHE_LINES16' in file
+	 /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_core.sv'.
+==================================================================================
+|    Register Name    |   Type    | Width | Bus | MB |  Set  | Reset | ST | Line |
+==================================================================================
+|      state_reg      | Flip-flop |   4   |  Y  | N  | None  | None  | N  | 673  |
+|       pc_reg        | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 673  |
+|      insn_reg       | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 673  |
+|       vl_reg        | Flip-flop |   5   |  Y  | N  | None  | None  | N  | 673  |
+|    ncores_q_reg     | Flip-flop |   8   |  Y  | N  | None  | None  | N  | 673  |
+|    cycle_cnt_reg    | Flip-flop |  64   |  Y  | N  | None  | None  | N  | 673  |
+|   instret_cnt_reg   | Flip-flop |  64   |  Y  | N  | None  | None  | N  | 673  |
+|    end_valid_reg    | Flip-flop |   1   |  N  | N  | None  | None  | N  | 673  |
+|    end_error_reg    | Flip-flop |   1   |  N  | N  | None  | None  | N  | 673  |
+|    end_cause_reg    | Flip-flop |   8   |  Y  | N  | None  | None  | N  | 673  |
+|     end_pc_reg      | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 673  |
+|    end_insn_reg     | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 673  |
+|      mrow_reg       | Flip-flop |   4   |  Y  | N  | None  | None  | N  | 673  |
+|      maddr_reg      | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 673  |
+|     ls_addr_reg     | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 673  |
+|    ls_write_reg     | Flip-flop |   1   |  N  | N  | None  | None  | N  | 673  |
+|     ls_data_reg     | Flip-flop |  256  |  Y  | N  | None  | None  | N  | 673  |
+|     ls_mask_reg     | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 673  |
+|      xreg_reg       | Flip-flop | 1024  |  Y  | N  | None  | None  | N  | 673  |
+==================================================================================
+Statistics for MUX_OPs
+=========================================================================================================================================================================
+|                                                          block name/line                                                            | Inputs | Outputs | # sel inputs |
+=========================================================================================================================================================================
+| accel_core_CORE_ID0_VLEN256_HBM_DATA_W256_NUM_VPUS2_NUM_MXUS2_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_SPAD_KB16_ICACHE_LINES16/155 |   32   |   32    |      5       |
+| accel_core_CORE_ID0_VLEN256_HBM_DATA_W256_NUM_VPUS2_NUM_MXUS2_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_SPAD_KB16_ICACHE_LINES16/156 |   32   |   32    |      5       |
+=========================================================================================================================================================================
+Presto compilation completed successfully. (accel_core_CORE_ID0_VLEN256_HBM_DATA_W256_NUM_VPUS2_NUM_MXUS2_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_SPAD_KB16_ICACHE_LINES16)
+Module: accel_core_CORE_ID0_VLEN256_HBM_DATA_W256_NUM_VPUS2_NUM_MXUS2_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_SPAD_KB16_ICACHE_LINES16, Ports: 1022, Input: 560, Output: 462, Inout: 0
+Module: accel_core_CORE_ID0_VLEN256_HBM_DATA_W256_NUM_VPUS2_NUM_MXUS2_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_SPAD_KB16_ICACHE_LINES16, Registers: 1664, Async set/reset: 0, Sync set/reset: 0
+Information: Module report end. (ELAB-965)
+Information: Building the design 'accel_spad' instantiated from design 'accel_top_VLEN256_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_HBM_DATA_W256_ICACHE_LINES16_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_FP_PIPE1_SPAD_KB16' with
+	the parameters "HBM_DATA_W=256,SPAD_KB=16". (HDL-193)
+
+Inferred memory devices in process in routine 'accel_spad_HBM_DATA_W256_SPAD_KB16' in file
+	 /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_spad.sv'.
+==================================================================================
+|    Register Name    |   Type    | Width | Bus | MB |  Set  | Reset | ST | Line |
+==================================================================================
+|   spad_err_q_reg    | Flip-flop |   1   |  N  | N  | None  | None  | N  |  93  |
+|   spad_resp_q_reg   | Flip-flop |   1   |  N  | N  | None  | None  | N  |  93  |
+==================================================================================
+Presto compilation completed successfully. (accel_spad_HBM_DATA_W256_SPAD_KB16)
+Module: accel_spad_HBM_DATA_W256_SPAD_KB16, Ports: 1164, Input: 583, Output: 581, Inout: 0
+Module: accel_spad_HBM_DATA_W256_SPAD_KB16, Registers: 2, Async set/reset: 0, Sync set/reset: 0
+Information: Module report end. (ELAB-965)
+Information: Building the design 'accel_axi_master' instantiated from design 'accel_top_VLEN256_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_HBM_DATA_W256_ICACHE_LINES16_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_FP_PIPE1_SPAD_KB16' with
+	the parameters "HBM_ADDR_W=32,HBM_DATA_W=256,HBM_ID_W=4,ID_VALUE=0". (HDL-193)
+
+Statistics for case statements in always block in file
+	'/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_axi_master.sv'
+============================================================
+|    Line    |  full/ parallel  |      block location      |
+============================================================
+|    114     |    user/user     | always block at line 100 |
+============================================================
+
+Inferred memory devices in process in routine 'accel_axi_master_HBM_ADDR_W32_HBM_DATA_W256_HBM_ID_W4_ID_VALUE0' in file
+	 /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_axi_master.sv'.
+==================================================================================
+|    Register Name    |   Type    | Width | Bus | MB |  Set  | Reset | ST | Line |
+==================================================================================
+|    resp_err_reg     | Flip-flop |   1   |  N  | N  | None  | None  | N  | 100  |
+|      state_reg      | Flip-flop |   3   |  Y  | N  | None  | None  | N  | 100  |
+|     addr_q_reg      | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 100  |
+|     wdata_q_reg     | Flip-flop |  256  |  Y  | N  | None  | None  | N  | 100  |
+|     wstrb_q_reg     | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 100  |
+|     aw_done_reg     | Flip-flop |   1   |  N  | N  | None  | None  | N  | 100  |
+|     w_done_reg      | Flip-flop |   1   |  N  | N  | None  | None  | N  | 100  |
+|   resp_valid_reg    | Flip-flop |   1   |  N  | N  | None  | None  | N  | 100  |
+|   resp_rdata_reg    | Flip-flop |  256  |  Y  | N  | None  | None  | N  | 100  |
+==================================================================================
+Presto compilation completed successfully. (accel_axi_master_HBM_ADDR_W32_HBM_DATA_W256_HBM_ID_W4_ID_VALUE0)
+Module: accel_axi_master_HBM_ADDR_W32_HBM_DATA_W256_HBM_ID_W4_ID_VALUE0, Ports: 1249, Input: 598, Output: 651, Inout: 0
+Module: accel_axi_master_HBM_ADDR_W32_HBM_DATA_W256_HBM_ID_W4_ID_VALUE0, Registers: 583, Async set/reset: 0, Sync set/reset: 0
+Information: Module report end. (ELAB-965)
+Information: Building the design 'accel_core' instantiated from design 'accel_top_VLEN256_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_HBM_DATA_W256_ICACHE_LINES16_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_FP_PIPE1_SPAD_KB16' with
+	the parameters "CORE_ID=1,VLEN=256,HBM_DATA_W=256,NUM_VPUS=2,NUM_MXUS=2,MAT_DIM=16,NUM_TREGS=4,NUM_ACCS=2,MXU_ROWS=4,SPAD_KB=16,ICACHE_LINES=16". (HDL-193)
+Information: Loop optimization is performed. (ELAB-2057)
+Warning:  /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_core.sv:428: Statement unreachable (Branch condition impossible to meet).  (VER-61)
+Warning:  /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_core.sv:482: Statement unreachable (Branch condition impossible to meet).  (VER-61)
+
+Statistics for case statements in always block in file
+	'/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_core.sv'
+============================================================
+|    Line    |  full/ parallel  |      block location      |
+============================================================
+|    178     |    user/user     | always block at line 176 |
+|    275     |    user/user     | always block at line 272 |
+|    315     |    user/user     | always block at line 311 |
+|    327     |    user/user     | always block at line 311 |
+|    356     |    user/user     | always block at line 337 |
+|    429     |    user/user     | always block at line 337 |
+|    449     |    user/user     | always block at line 337 |
+|    483     |    user/user     | always block at line 337 |
+|    577     |    user/user     | always block at line 571 |
+|    612     |    user/user     | always block at line 611 |
+|    641     |    user/user     | always block at line 636 |
+|    707     |    user/user     | always block at line 673 |
+============================================================
+
+Inferred memory devices in process in routine 'accel_core_CORE_ID1_VLEN256_HBM_DATA_W256_NUM_VPUS2_NUM_MXUS2_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_SPAD_KB16_ICACHE_LINES16' in file
+	 /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_core.sv'.
+==================================================================================
+|    Register Name    |   Type    | Width | Bus | MB |  Set  | Reset | ST | Line |
+==================================================================================
+|      state_reg      | Flip-flop |   4   |  Y  | N  | None  | None  | N  | 673  |
+|       pc_reg        | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 673  |
+|      insn_reg       | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 673  |
+|       vl_reg        | Flip-flop |   5   |  Y  | N  | None  | None  | N  | 673  |
+|    ncores_q_reg     | Flip-flop |   8   |  Y  | N  | None  | None  | N  | 673  |
+|    cycle_cnt_reg    | Flip-flop |  64   |  Y  | N  | None  | None  | N  | 673  |
+|   instret_cnt_reg   | Flip-flop |  64   |  Y  | N  | None  | None  | N  | 673  |
+|    end_valid_reg    | Flip-flop |   1   |  N  | N  | None  | None  | N  | 673  |
+|    end_error_reg    | Flip-flop |   1   |  N  | N  | None  | None  | N  | 673  |
+|    end_cause_reg    | Flip-flop |   8   |  Y  | N  | None  | None  | N  | 673  |
+|     end_pc_reg      | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 673  |
+|    end_insn_reg     | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 673  |
+|      mrow_reg       | Flip-flop |   4   |  Y  | N  | None  | None  | N  | 673  |
+|      maddr_reg      | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 673  |
+|     ls_addr_reg     | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 673  |
+|    ls_write_reg     | Flip-flop |   1   |  N  | N  | None  | None  | N  | 673  |
+|     ls_data_reg     | Flip-flop |  256  |  Y  | N  | None  | None  | N  | 673  |
+|     ls_mask_reg     | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 673  |
+|      xreg_reg       | Flip-flop | 1024  |  Y  | N  | None  | None  | N  | 673  |
+==================================================================================
+Statistics for MUX_OPs
+=========================================================================================================================================================================
+|                                                          block name/line                                                            | Inputs | Outputs | # sel inputs |
+=========================================================================================================================================================================
+| accel_core_CORE_ID1_VLEN256_HBM_DATA_W256_NUM_VPUS2_NUM_MXUS2_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_SPAD_KB16_ICACHE_LINES16/155 |   32   |   32    |      5       |
+| accel_core_CORE_ID1_VLEN256_HBM_DATA_W256_NUM_VPUS2_NUM_MXUS2_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_SPAD_KB16_ICACHE_LINES16/156 |   32   |   32    |      5       |
+=========================================================================================================================================================================
+Presto compilation completed successfully. (accel_core_CORE_ID1_VLEN256_HBM_DATA_W256_NUM_VPUS2_NUM_MXUS2_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_SPAD_KB16_ICACHE_LINES16)
+Module: accel_core_CORE_ID1_VLEN256_HBM_DATA_W256_NUM_VPUS2_NUM_MXUS2_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_SPAD_KB16_ICACHE_LINES16, Ports: 1022, Input: 560, Output: 462, Inout: 0
+Module: accel_core_CORE_ID1_VLEN256_HBM_DATA_W256_NUM_VPUS2_NUM_MXUS2_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_SPAD_KB16_ICACHE_LINES16, Registers: 1664, Async set/reset: 0, Sync set/reset: 0
+Information: Module report end. (ELAB-965)
+Information: Building the design 'accel_axi_master' instantiated from design 'accel_top_VLEN256_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_HBM_DATA_W256_ICACHE_LINES16_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_FP_PIPE1_SPAD_KB16' with
+	the parameters "HBM_ADDR_W=32,HBM_DATA_W=256,HBM_ID_W=4,ID_VALUE=1". (HDL-193)
+
+Statistics for case statements in always block in file
+	'/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_axi_master.sv'
+============================================================
+|    Line    |  full/ parallel  |      block location      |
+============================================================
+|    114     |    user/user     | always block at line 100 |
+============================================================
+
+Inferred memory devices in process in routine 'accel_axi_master_HBM_ADDR_W32_HBM_DATA_W256_HBM_ID_W4_ID_VALUE1' in file
+	 /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_axi_master.sv'.
+==================================================================================
+|    Register Name    |   Type    | Width | Bus | MB |  Set  | Reset | ST | Line |
+==================================================================================
+|    resp_err_reg     | Flip-flop |   1   |  N  | N  | None  | None  | N  | 100  |
+|      state_reg      | Flip-flop |   3   |  Y  | N  | None  | None  | N  | 100  |
+|     addr_q_reg      | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 100  |
+|     wdata_q_reg     | Flip-flop |  256  |  Y  | N  | None  | None  | N  | 100  |
+|     wstrb_q_reg     | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 100  |
+|     aw_done_reg     | Flip-flop |   1   |  N  | N  | None  | None  | N  | 100  |
+|     w_done_reg      | Flip-flop |   1   |  N  | N  | None  | None  | N  | 100  |
+|   resp_valid_reg    | Flip-flop |   1   |  N  | N  | None  | None  | N  | 100  |
+|   resp_rdata_reg    | Flip-flop |  256  |  Y  | N  | None  | None  | N  | 100  |
+==================================================================================
+Presto compilation completed successfully. (accel_axi_master_HBM_ADDR_W32_HBM_DATA_W256_HBM_ID_W4_ID_VALUE1)
+Module: accel_axi_master_HBM_ADDR_W32_HBM_DATA_W256_HBM_ID_W4_ID_VALUE1, Ports: 1249, Input: 598, Output: 651, Inout: 0
+Module: accel_axi_master_HBM_ADDR_W32_HBM_DATA_W256_HBM_ID_W4_ID_VALUE1, Registers: 583, Async set/reset: 0, Sync set/reset: 0
+Information: Module report end. (ELAB-965)
+Information: Building the design 'accel_axi_arbiter' instantiated from design 'accel_top_VLEN256_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_HBM_DATA_W256_ICACHE_LINES16_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_FP_PIPE1_SPAD_KB16' with
+	the parameters "N=2,HBM_ADDR_W=32,HBM_DATA_W=256,HBM_ID_W=4". (HDL-193)
+
+Inferred memory devices in process in routine 'accel_axi_arbiter_N2_HBM_ADDR_W32_HBM_DATA_W256_HBM_ID_W4' in file
+	 /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_axi_arbiter.sv'.
+==================================================================================
+|    Register Name    |   Type    | Width | Bus | MB |  Set  | Reset | ST | Line |
+==================================================================================
+|     ar_ptr_reg      | Flip-flop |   1   |  N  | N  | None  | None  | N  | 135  |
+|     ar_held_reg     | Flip-flop |   1   |  N  | N  | None  | None  | N  | 135  |
+|    ar_sel_q_reg     | Flip-flop |   1   |  N  | N  | None  | None  | N  | 135  |
+|    w_done_q_reg     | Flip-flop |   1   |  N  | N  | None  | None  | N  | 200  |
+|     wr_held_reg     | Flip-flop |   1   |  N  | N  | None  | None  | N  | 200  |
+|    wr_sel_q_reg     | Flip-flop |   1   |  N  | N  | None  | None  | N  | 200  |
+|     wr_ptr_reg      | Flip-flop |   1   |  N  | N  | None  | None  | N  | 200  |
+|    aw_done_q_reg    | Flip-flop |   1   |  N  | N  | None  | None  | N  | 200  |
+==================================================================================
+Presto compilation completed successfully. (accel_axi_arbiter_N2_HBM_ADDR_W32_HBM_DATA_W256_HBM_ID_W4)
+Module: accel_axi_arbiter_N2_HBM_ADDR_W32_HBM_DATA_W256_HBM_ID_W4, Ports: 2000, Input: 1060, Output: 940, Inout: 0
+Module: accel_axi_arbiter_N2_HBM_ADDR_W32_HBM_DATA_W256_HBM_ID_W4, Registers: 8, Async set/reset: 0, Sync set/reset: 0
+Information: Module report end. (ELAB-965)
+Information: Building the design 'accel_icache' instantiated from design 'accel_core_CORE_ID0_VLEN256_HBM_DATA_W256_NUM_VPUS2_NUM_MXUS2_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_SPAD_KB16_ICACHE_LINES16' with
+	the parameters "LINES=16,HBM_DATA_W=256". (HDL-193)
+
+Inferred memory devices in process in routine 'accel_icache_LINES16_HBM_DATA_W256' in file
+	 /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_icache.sv'.
+==================================================================================
+|    Register Name    |   Type    | Width | Bus | MB |  Set  | Reset | ST | Line |
+==================================================================================
+|      valid_reg      | Flip-flop |  16   |  Y  | N  | None  | None  | N  |  85  |
+|       tag_reg       | Flip-flop |  368  |  Y  | N  | None  | None  | N  |  91  |
+|      data_reg       | Flip-flop | 4096  |  Y  | N  | None  | None  | N  |  91  |
+==================================================================================
+Statistics for MUX_OPs
+===========================================================================
+|           block name/line             | Inputs | Outputs | # sel inputs |
+===========================================================================
+| accel_icache_LINES16_HBM_DATA_W256/75 |   16   |    1    |      4       |
+| accel_icache_LINES16_HBM_DATA_W256/75 |   16   |   23    |      4       |
+| accel_icache_LINES16_HBM_DATA_W256/76 |   16   |   256   |      4       |
+===========================================================================
+Presto compilation completed successfully. (accel_icache_LINES16_HBM_DATA_W256)
+Module: accel_icache_LINES16_HBM_DATA_W256, Ports: 357, Input: 324, Output: 33, Inout: 0
+Module: accel_icache_LINES16_HBM_DATA_W256, Registers: 4480, Async set/reset: 0, Sync set/reset: 0
+Information: Module report end. (ELAB-965)
+Information: Building the design 'accel_vpu' instantiated from design 'accel_core_CORE_ID0_VLEN256_HBM_DATA_W256_NUM_VPUS2_NUM_MXUS2_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_SPAD_KB16_ICACHE_LINES16' with
+	the parameters "VLEN=256". (HDL-193)
+
+Statistics for case statements in always block in file
+	'/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_vpu.sv'
+============================================================
+|    Line    |  full/ parallel  |      block location      |
+============================================================
+|    136     |    auto/auto     | always block at line 132 |
+============================================================
+
+Inferred memory devices in process in routine 'accel_vpu_VLEN256' in file
+	 /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_vpu.sv'.
+==================================================================================
+|    Register Name    |   Type    | Width | Bus | MB |  Set  | Reset | ST | Line |
+==================================================================================
+|    s1_direct_reg    | Flip-flop |  256  |  Y  | N  | None  | None  | N  | 148  |
+|      s1_x_reg       | Flip-flop |  512  |  Y  | N  | None  | None  | N  | 148  |
+|      s1_y_reg       | Flip-flop |  512  |  Y  | N  | None  | None  | N  | 148  |
+|    s2_direct_reg    | Flip-flop |  256  |  Y  | N  | None  | None  | N  | 148  |
+|     s2_mid_reg      | Flip-flop | 1552  |  Y  | N  | None  | None  | N  | 148  |
+|    s2_valid_reg     | Flip-flop |   1   |  N  | N  | None  | None  | N  | 165  |
+|    s0_valid_reg     | Flip-flop |   1   |  N  | N  | None  | None  | N  | 165  |
+|    s1_valid_reg     | Flip-flop |   1   |  N  | N  | None  | None  | N  | 165  |
+|     s0_mask_reg     | Flip-flop |  16   |  Y  | N  | None  | None  | N  | 165  |
+|      s0_op_reg      | Flip-flop |   7   |  Y  | N  | None  | None  | N  | 165  |
+|      s0_vd_reg      | Flip-flop |   5   |  Y  | N  | None  | None  | N  | 165  |
+|      s0_a_reg       | Flip-flop |  256  |  Y  | N  | None  | None  | N  | 165  |
+|      s0_b_reg       | Flip-flop |  256  |  Y  | N  | None  | None  | N  | 165  |
+|      s0_d_reg       | Flip-flop |  256  |  Y  | N  | None  | None  | N  | 165  |
+|     s1_mask_reg     | Flip-flop |  16   |  Y  | N  | None  | None  | N  | 165  |
+|   s1_use_add_reg    | Flip-flop |   1   |  N  | N  | None  | None  | N  | 165  |
+|      s1_vd_reg      | Flip-flop |   5   |  Y  | N  | None  | None  | N  | 165  |
+|     s2_mask_reg     | Flip-flop |  16   |  Y  | N  | None  | None  | N  | 165  |
+|   s2_use_add_reg    | Flip-flop |   1   |  N  | N  | None  | None  | N  | 165  |
+|      s2_vd_reg      | Flip-flop |   5   |  Y  | N  | None  | None  | N  | 165  |
+|     red_mid_reg     | Flip-flop |  97   |  Y  | N  | None  | None  | N  | 226  |
+|    red_busy_reg     | Flip-flop |   1   |  N  | N  | None  | None  | N  | 226  |
+|    red_phase_reg    | Flip-flop |   1   |  N  | N  | None  | None  | N  | 226  |
+|     red_idx_reg     | Flip-flop |   5   |  Y  | N  | None  | None  | N  | 226  |
+|    red_max_q_reg    | Flip-flop |   1   |  N  | N  | None  | None  | N  | 226  |
+|    red_vd_q_reg     | Flip-flop |   5   |  Y  | N  | None  | None  | N  | 226  |
+|    red_vs2_q_reg    | Flip-flop |   5   |  Y  | N  | None  | None  | N  | 226  |
+|     red_acc_reg     | Flip-flop |  32   |  Y  | N  | None  | None  | N  | 226  |
+|      red_m_reg      | Flip-flop |  16   |  Y  | N  | None  | None  | N  | 226  |
+|    red_elem_reg     | Flip-flop |  16   |  Y  | N  | None  | None  | N  | 226  |
+|      vreg_reg       | Flip-flop | 8192  |  Y  | N  | None  | None  | N  | 257  |
+==================================================================================
+Statistics for MUX_OPs
+===========================================================
+|   block name/line     | Inputs | Outputs | # sel inputs |
+===========================================================
+| accel_vpu_VLEN256/100 |   32   |   256   |      5       |
+| accel_vpu_VLEN256/101 |   32   |   256   |      5       |
+| accel_vpu_VLEN256/102 |   32   |   256   |      5       |
+| accel_vpu_VLEN256/219 |   32   |   16    |      5       |
+| accel_vpu_VLEN256/238 |   32   |   16    |      5       |
+| accel_vpu_VLEN256/246 |   32   |   256   |      5       |
+| accel_vpu_VLEN256/270 |   32   |   256   |      5       |
+===========================================================
+Presto compilation completed successfully. (accel_vpu_VLEN256)
+Module: accel_vpu_VLEN256, Ports: 628, Input: 370, Output: 258, Inout: 0
+Module: accel_vpu_VLEN256, Registers: 12302, Async set/reset: 0, Sync set/reset: 0
+Information: Module report end. (ELAB-965)
+Module: accel_vpu_VLEN256, Elapsed Time: 00:00:15, CPU Time: 00:00:15, Total Mem: 727.25 MB, Mem: 393.85 MB, Time: Tue Nov 17 19:39:57 2026
+Information: Building the design 'accel_mxu' instantiated from design 'accel_core_CORE_ID0_VLEN256_HBM_DATA_W256_NUM_VPUS2_NUM_MXUS2_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_SPAD_KB16_ICACHE_LINES16' with
+	the parameters "MAT_DIM=16,NUM_TREGS=4,NUM_ACCS=2,MXU_ROWS=4". (HDL-193)
+
+Inferred memory devices in process in routine 'accel_mxu_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4' in file
+	 /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/hw/rtl/accel_mxu.sv'.
+==================================================================================
+|    Register Name    |   Type    | Width | Bus | MB |  Set  | Reset | ST | Line |
+==================================================================================
+|      tb_q_reg       | Flip-flop |   2   |  Y  | N  | None  | None  | N  | 138  |
+|     issuing_reg     | Flip-flop |   1   |  N  | N  | None  | None  | N  | 138  |
+|     step_k_reg      | Flip-flop |   4   |  Y  | N  | None  | None  | N  | 138  |
+|     step_g_reg      | Flip-flop |   2   |  Y  | N  | None  | None  | N  | 138  |
+|      acc_q_reg      | Flip-flop |   2   |  Y  | N  | None  | None  | N  | 138  |
+|      ta_q_reg       | Flip-flop |   2   |  Y  | N  | None  | None  | N  | 138  |
+|       b0_reg        | Flip-flop |  256  |  Y  | N  | None  | None  | N  | 178  |
+|       a0_reg        | Flip-flop |  64   |  Y  | N  | None  | None  | N  | 186  |
+|      prod1_reg      | Flip-flop | 2048  |  Y  | N  | None  | None  | N  | 191  |
+|      mid2_reg       | Flip-flop | 6208  |  Y  | N  | None  | None  | N  | 204  |
+|       g2_reg        | Flip-flop |   2   |  Y  | N  | None  | None  | N  | 219  |
+|       v0_reg        | Flip-flop |   1   |  N  | N  | None  | None  | N  | 219  |
+|       v1_reg        | Flip-flop |   1   |  N  | N  | None  | None  | N  | 219  |
+|       v2_reg        | Flip-flop |   1   |  N  | N  | None  | None  | N  | 219  |
+|       g0_reg        | Flip-flop |   2   |  Y  | N  | None  | None  | N  | 219  |
+|       g1_reg        | Flip-flop |   2   |  Y  | N  | None  | None  | N  | 219  |
+|      treg_reg       | Flip-flop | 16384 |  Y  | N  | None  | None  | N  | 240  |
+|      areg_reg       | Flip-flop | 16384 |  Y  | N  | None  | None  | N  | 240  |
+==================================================================================
+Statistics for MUX_OPs
+============================================================================================
+|                    block name/line                     | Inputs | Outputs | # sel inputs |
+============================================================================================
+| accel_mxu_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4/114 |   4    |  4096   |      2       |
+| accel_mxu_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4/115 |   16   |   256   |      4       |
+| accel_mxu_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4/112 |   16   |   512   |      4       |
+| accel_mxu_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4/176 |   4    |  4096   |      2       |
+| accel_mxu_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4/176 |   16   |   256   |      4       |
+| accel_mxu_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4/187 |   4    |  4096   |      2       |
+| accel_mxu_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4/187 |   16   |   256   |      4       |
+| accel_mxu_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4/187 |   16   |   256   |      4       |
+| accel_mxu_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4/187 |   16   |   256   |      4       |
+| accel_mxu_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4/187 |   16   |   256   |      4       |
+| accel_mxu_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4/201 |   16   |   512   |      4       |
+| accel_mxu_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4/201 |   16   |   512   |      4       |
+| accel_mxu_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4/201 |   16   |   512   |      4       |
+| accel_mxu_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4/201 |   16   |   512   |      4       |
+============================================================================================
+Presto compilation completed successfully. (accel_mxu_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4)
+Module: accel_mxu_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4, Ports: 539, Input: 282, Output: 257, Inout: 0
+Module: accel_mxu_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4, Registers: 41366, Async set/reset: 0, Sync set/reset: 0
+Information: Module report end. (ELAB-965)
+Module: accel_mxu_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4, Elapsed Time: 00:00:43, CPU Time: 00:00:41, Total Mem: 2.26 GB, Mem: 1.42 GB, Time: Tue Nov 17 19:40:46 2026
+Information: Building the design 'accel_sram_1rw' instantiated from design 'accel_spad_HBM_DATA_W256_SPAD_KB16' with
+	the parameters "DEPTH=512,WIDTH=256". (HDL-193)
+Presto compilation completed successfully. (accel_sram_1rw_DEPTH512_WIDTH256)
+Module: accel_sram_1rw_DEPTH512_WIDTH256, Ports: 780, Input: 524, Output: 256, Inout: 0
+Module: accel_sram_1rw_DEPTH512_WIDTH256, Registers: 0, Async set/reset: 0, Sync set/reset: 0
+Information: Module report end. (ELAB-965)
+1
+# Elaborating with parameters renames the design (accel_top_VLEN256...);
+# give it back its plain name so outputs are predictable.
+set elab_name [get_object_name [current_design]]
+Current design is 'accel_top_VLEN256_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_HBM_DATA_W256_ICACHE_LINES16_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_FP_PIPE1_SPAD_KB16'.
+accel_top_VLEN256_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_HBM_DATA_W256_ICACHE_LINES16_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_FP_PIPE1_SPAD_KB16
+if {$elab_name ne "accel_top"} { rename_design $elab_name accel_top }
+Information: Renaming design /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/build/synth/asap7_TT_RVT/v256_m16_t4_a2_r4_d256_i16_c2_s16_p1_1.2ns/accel_top_VLEN256_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_HBM_DATA_W256_ICACHE_LINES16_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_FP_PIPE1_SPAD_KB16.db:accel_top_VLEN256_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_HBM_DATA_W256_ICACHE_LINES16_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_FP_PIPE1_SPAD_KB16 to /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/build/synth/asap7_TT_RVT/v256_m16_t4_a2_r4_d256_i16_c2_s16_p1_1.2ns/accel_top_VLEN256_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_HBM_DATA_W256_ICACHE_LINES16_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_FP_PIPE1_SPAD_KB16.db:accel_top. (UIMG-45)
+Current design is 'accel_top'.
+1
+current_design accel_top
+Current design is 'accel_top'.
+{accel_top}
+link
+
+  Linking design 'accel_top'
+  Using the following designs and libraries:
+  --------------------------------------------------------------------------
+  * (12 designs)              /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/build/synth/asap7_TT_RVT/v256_m16_t4_a2_r4_d256_i16_c2_s16_p1_1.2ns/accel_top_VLEN256_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_HBM_DATA_W256_ICACHE_LINES16_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_FP_PIPE1_SPAD_KB16.db, etc
+  asap7sc7p5t_AO_RVT_TT_nldm_211120 (library) /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_AO_RVT_TT_nldm_211120.db
+  asap7sc7p5t_INVBUF_RVT_TT_nldm_211120 (library) /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_INVBUF_RVT_TT_nldm_220122.db
+  asap7sc7p5t_OA_RVT_TT_nldm_211120 (library) /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_OA_RVT_TT_nldm_211120.db
+  asap7sc7p5t_SEQ_RVT_TT_nldm_220123 (library) /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_SEQ_RVT_TT_nldm_220123.db
+  asap7sc7p5t_SIMPLE_RVT_TT_nldm_211120 (library) /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_SIMPLE_RVT_TT_nldm_211120.db
+  dw_foundation.sldb (library) /software/Synopsys-2024_x86_64/syn/W-2024.09/libraries/syn/dw_foundation.sldb
+  sram1rw_128x128_TT (library) /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_128x128_TT.db
+  sram1rw_128x32_TT (library) /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_128x32_TT.db
+  sram1rw_128x64_TT (library) /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_128x64_TT.db
+  sram1rw_256x128_TT (library) /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_256x128_TT.db
+  sram1rw_256x32_TT (library) /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_256x32_TT.db
+  sram1rw_256x64_TT (library) /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_256x64_TT.db
+  sram1rw_512x128_TT (library) /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_512x128_TT.db
+  sram1rw_512x32_TT (library) /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_512x32_TT.db
+  sram1rw_512x64_TT (library) /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_512x64_TT.db
+  sram1rw_64x128_TT (library) /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_64x128_TT.db
+  sram1rw_64x32_TT (library)  /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_64x32_TT.db
+  sram1rw_64x64_TT (library)  /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_64x64_TT.db
+
+1
+file mkdir reports
+check_design > reports/check_design.rpt
+if {$elab_only} {
+  puts "INFO: SYNTH_ELAB_ONLY set -- stopping after elaboration"
+  exit
+}
+#------------------------------------------------------------------------------
+# Constraints
+#------------------------------------------------------------------------------
+# CLK_PERIOD is in ns; libraries use their own time unit (ASAP7: ps).
+set clk_period [expr {$clk_ns * $pdk_time_scale}]
+1200.0
+create_clock -name clk -period $clk_period [get_ports clk]
+1
+# Setup-only uncertainty: with an ideal (pre-CTS) clock, hold is checked but
+# not fixed here -- hold buffers are inserted after clock-tree synthesis in
+# place & route, where real clock skew is known.
+set_clock_uncertainty -setup [expr {0.02 * $clk_period}] [get_clocks clk]
+1
+set non_clk_inputs [remove_from_collection [all_inputs] [get_ports clk]]
+{rst_n s_axil_awaddr[11] s_axil_awaddr[10] s_axil_awaddr[9] s_axil_awaddr[8] s_axil_awaddr[7] s_axil_awaddr[6] s_axil_awaddr[5] s_axil_awaddr[4] s_axil_awaddr[3] s_axil_awaddr[2] s_axil_awaddr[1] s_axil_awaddr[0] s_axil_awvalid s_axil_wdata[31] s_axil_wdata[30] s_axil_wdata[29] s_axil_wdata[28] s_axil_wdata[27] s_axil_wdata[26] s_axil_wdata[25] s_axil_wdata[24] s_axil_wdata[23] s_axil_wdata[22] s_axil_wdata[21] s_axil_wdata[20] s_axil_wdata[19] s_axil_wdata[18] s_axil_wdata[17] s_axil_wdata[16] s_axil_wdata[15] s_axil_wdata[14] s_axil_wdata[13] s_axil_wdata[12] s_axil_wdata[11] s_axil_wdata[10] s_axil_wdata[9] s_axil_wdata[8] s_axil_wdata[7] s_axil_wdata[6] s_axil_wdata[5] s_axil_wdata[4] s_axil_wdata[3] s_axil_wdata[2] s_axil_wdata[1] s_axil_wdata[0] s_axil_wstrb[3] s_axil_wstrb[2] s_axil_wstrb[1] s_axil_wstrb[0] s_axil_wvalid s_axil_bready s_axil_araddr[11] s_axil_araddr[10] s_axil_araddr[9] s_axil_araddr[8] s_axil_araddr[7] s_axil_araddr[6] s_axil_araddr[5] s_axil_araddr[4] s_axil_araddr[3] s_axil_araddr[2] s_axil_araddr[1] s_axil_araddr[0] s_axil_arvalid s_axil_rready m_axi_awready m_axi_wready m_axi_bid[3] m_axi_bid[2] m_axi_bid[1] m_axi_bid[0] m_axi_bresp[1] m_axi_bresp[0] m_axi_bvalid m_axi_arready m_axi_rid[3] m_axi_rid[2] m_axi_rid[1] m_axi_rid[0] m_axi_rdata[255] m_axi_rdata[254] m_axi_rdata[253] m_axi_rdata[252] m_axi_rdata[251] m_axi_rdata[250] m_axi_rdata[249] m_axi_rdata[248] m_axi_rdata[247] m_axi_rdata[246] m_axi_rdata[245] m_axi_rdata[244] m_axi_rdata[243] m_axi_rdata[242] m_axi_rdata[241] m_axi_rdata[240] m_axi_rdata[239] m_axi_rdata[238] m_axi_rdata[237] m_axi_rdata[236] ...}
+set_input_delay  [expr {0.2 * $clk_period}] -clock clk $non_clk_inputs
+1
+set_output_delay [expr {0.2 * $clk_period}] -clock clk [all_outputs]
+1
+set_load $pdk_output_load [all_outputs]
+1
+if {$pdk_driving_cell ne ""} {
+  set_driving_cell -lib_cell $pdk_driving_cell $non_clk_inputs
+}
+Warning: Design rule attributes from the driving cell will be set on the port 'rst_n'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_awaddr[11]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_awaddr[10]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_awaddr[9]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_awaddr[8]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_awaddr[7]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_awaddr[6]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_awaddr[5]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_awaddr[4]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_awaddr[3]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_awaddr[2]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_awaddr[1]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_awaddr[0]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_awvalid'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[31]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[30]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[29]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[28]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[27]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[26]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[25]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[24]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[23]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[22]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[21]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[20]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[19]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[18]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[17]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[16]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[15]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[14]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[13]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[12]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[11]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[10]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[9]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[8]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[7]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[6]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[5]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[4]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[3]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[2]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[1]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wdata[0]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wstrb[3]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wstrb[2]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wstrb[1]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wstrb[0]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_wvalid'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_bready'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_araddr[11]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_araddr[10]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_araddr[9]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_araddr[8]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_araddr[7]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_araddr[6]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_araddr[5]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_araddr[4]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_araddr[3]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_araddr[2]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_araddr[1]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_araddr[0]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_arvalid'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 's_axil_rready'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_awready'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_wready'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_bid[3]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_bid[2]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_bid[1]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_bid[0]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_bresp[1]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_bresp[0]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_bvalid'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_arready'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rid[3]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rid[2]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rid[1]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rid[0]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[255]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[254]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[253]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[252]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[251]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[250]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[249]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[248]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[247]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[246]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[245]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[244]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[243]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[242]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[241]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[240]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[239]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[238]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[237]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[236]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[235]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[234]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[233]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[232]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[231]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[230]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[229]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[228]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[227]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[226]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[225]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[224]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[223]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[222]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[221]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[220]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[219]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[218]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[217]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[216]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[215]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[214]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[213]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[212]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[211]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[210]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[209]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[208]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[207]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[206]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[205]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[204]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[203]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[202]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[201]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[200]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[199]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[198]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[197]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[196]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[195]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[194]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[193]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[192]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[191]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[190]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[189]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[188]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[187]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[186]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[185]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[184]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[183]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[182]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[181]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[180]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[179]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[178]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[177]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[176]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[175]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[174]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[173]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[172]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[171]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[170]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[169]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[168]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[167]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[166]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[165]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[164]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[163]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[162]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[161]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[160]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[159]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[158]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[157]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[156]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[155]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[154]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[153]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[152]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[151]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[150]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[149]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[148]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[147]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[146]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[145]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[144]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[143]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[142]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[141]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[140]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[139]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[138]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[137]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[136]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[135]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[134]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[133]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[132]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[131]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[130]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[129]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[128]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[127]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[126]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[125]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[124]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[123]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[122]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[121]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[120]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[119]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[118]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[117]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[116]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[115]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[114]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[113]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[112]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[111]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[110]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[109]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[108]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[107]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[106]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[105]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[104]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[103]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[102]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[101]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[100]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[99]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[98]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[97]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[96]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[95]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[94]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[93]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[92]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[91]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[90]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[89]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[88]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[87]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[86]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[85]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[84]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[83]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[82]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[81]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[80]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[79]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[78]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[77]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[76]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[75]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[74]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[73]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[72]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[71]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[70]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[69]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[68]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[67]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[66]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[65]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[64]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[63]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[62]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[61]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[60]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[59]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[58]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[57]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[56]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[55]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[54]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[53]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[52]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[51]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[50]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[49]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[48]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[47]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[46]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[45]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[44]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[43]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[42]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[41]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[40]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[39]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[38]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[37]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[36]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[35]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[34]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[33]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[32]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[31]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[30]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[29]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[28]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[27]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[26]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[25]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[24]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[23]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[22]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[21]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[20]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[19]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[18]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[17]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[16]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[15]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[14]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[13]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[12]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[11]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[10]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[9]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[8]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[7]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[6]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[5]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[4]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[3]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[2]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[1]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rdata[0]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rresp[1]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rresp[0]'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rlast'. (UID-401)
+Warning: Design rule attributes from the driving cell will be set on the port 'm_axi_rvalid'. (UID-401)
+1
+foreach pat $pdk_dont_use {
+  set cells [get_lib_cells -quiet $pat]
+  if {[sizeof_collection $cells] > 0} { set_dont_use $cells }
+}
+# Reset is a synchronous, high-fanout net: treat it as ideal here and let
+# physical design build the tree.
+set_ideal_network [get_ports rst_n]
+1
+write_sdc accel_top.sdc
+1
+#------------------------------------------------------------------------------
+# Compile
+#------------------------------------------------------------------------------
+compile_ultra -no_autoungroup
+Information: Performing leakage power optimization. (PWR-850)
+CPU Load: 12%, Ram Free: 10 GB, Swap Free: 7 GB, Work Disk Free: 21 GB, Tmp Disk Free: 7 GB
+Alib files are up-to-date.
+Information: Evaluating DesignWare library utilization. (UISN-27)
+
+============================================================================
+| DesignWare Building Block Library  |         Version         | Available |
+============================================================================
+| Basic DW Building Blocks           | W-2024.09-DWBB_202409.0 |     *     |
+| Licensed DW Building Blocks        | W-2024.09-DWBB_202409.0 |     *     |
+============================================================================
+
+====================================================================================================
+| Flow Information                                                                                 |
+----------------------------------------------------------------------------------------------------
+| Flow         | Design Compiler WLM                                                               |
+| Command Line | compile_ultra -no_autoungroup                                                     |
+====================================================================================================
+| Design Information                                      | Value                                  |
+====================================================================================================
+| Number of Scenarios                                     | 0                                      |
+| Leaf Cell Count                                         | 373986                                 |
+| Number of User Hierarchies                              | 16                                     |
+| Sequential Cell Count                                   | 121475                                 |
+| Macro Count                                             | 0                                      |
+| Number of Power Domains                                 | 0                                      |
+| Number of Path Groups                                   | 2                                      |
+| Number of VT Class                                      | 0                                      |
+| Number of Clocks                                        | 1                                      |
+| Number of Dont Touch Cells                              | 36605                                  |
+| Number of Dont Touch Nets                               | 60                                     |
+| Number of Size Only Cells                               | 0                                      |
+| Design with UPF Data                                    | false                                  |
+====================================================================================================
+Information: Sequential output inversion is enabled.  SVF file must be used for formal verification. (OPT-1208)
+
+
+Information: Uniquified 2 instances of design 'accel_spad_HBM_DATA_W256_SPAD_KB16'. (OPT-1056)
+Information: Uniquified 2 instances of design 'accel_icache_LINES16_HBM_DATA_W256'. (OPT-1056)
+Information: Uniquified 2 instances of design 'accel_vpu_VLEN256'. (OPT-1056)
+Information: Uniquified 2 instances of design 'accel_mxu_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4'. (OPT-1056)
+Information: Uniquified 2 instances of design 'accel_sram_1rw_DEPTH512_WIDTH256'. (OPT-1056)
+  Simplifying Design 'accel_top'
+
+  Loading target library 'asap7sc7p5t_AO_RVT_TT_nldm_211120'
+  Loading target library 'asap7sc7p5t_OA_RVT_TT_nldm_211120'
+  Loading target library 'asap7sc7p5t_SEQ_RVT_TT_nldm_220123'
+  Loading target library 'asap7sc7p5t_SIMPLE_RVT_TT_nldm_211120'
+LNC WARNING: Found output_to_output lib arc on FAx1_ASAP7_75t_R.
+Loaded alib file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/alib/alib-52/asap7sc7p5t_AO_RVT_TT_nldm_211120.db.alib' (placeholder)
+Loaded alib file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/alib/alib-52/asap7sc7p5t_INVBUF_RVT_TT_nldm_220122.db.alib' (placeholder)
+Loaded alib file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/alib/alib-52/asap7sc7p5t_OA_RVT_TT_nldm_211120.db.alib' (placeholder)
+Loaded alib file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/alib/alib-52/asap7sc7p5t_SEQ_RVT_TT_nldm_220123.db.alib' (placeholder)
+Loaded alib file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/alib/alib-52/asap7sc7p5t_SIMPLE_RVT_TT_nldm_211120.db.alib' (placeholder)
+Warning: Only placeholder alibs were found. Proceeding with library analysis. (OPT-1311)
+CPU Load: 11%, Ram Free: 10 GB, Swap Free: 7 GB, Work Disk Free: 21 GB, Tmp Disk Free: 7 GB
+Information: State dependent leakage is now switched from on to off.
+
+  Beginning Pass 1 Mapping
+  ------------------------
+  Processing 'accel_mxu_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_0'
+Information: Added key list 'DesignWare' to design 'accel_mxu_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_0'. (DDB-72)
+Warning: Target library does not contain any 2-1 multiplexor. (OPT-853)
+ Implement Synthetic for 'accel_mxu_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_0'.
+  Processing 'accel_mxu_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_1'
+Information: Added key list 'DesignWare' to design 'accel_mxu_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_1'. (DDB-72)
+Warning: Target library does not contain any 2-1 multiplexor. (OPT-853)
+ Implement Synthetic for 'accel_mxu_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_1'.
+  Processing 'accel_vpu_VLEN256_0'
+Information: Added key list 'DesignWare' to design 'accel_vpu_VLEN256_0'. (DDB-72)
+Warning: Target library does not contain any 2-1 multiplexor. (OPT-853)
+ Implement Synthetic for 'accel_vpu_VLEN256_0'.
+  Processing 'accel_icache_LINES16_HBM_DATA_W256_0'
+Warning: Target library does not contain any 2-1 multiplexor. (OPT-853)
+Information: Added key list 'DesignWare' to design 'accel_icache_LINES16_HBM_DATA_W256_0'. (DDB-72)
+ Implement Synthetic for 'accel_icache_LINES16_HBM_DATA_W256_0'.
+  Processing 'accel_core_CORE_ID1_VLEN256_HBM_DATA_W256_NUM_VPUS2_NUM_MXUS2_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_SPAD_KB16_ICACHE_LINES16'
+Information: Added key list 'DesignWare' to design 'accel_core_CORE_ID1_VLEN256_HBM_DATA_W256_NUM_VPUS2_NUM_MXUS2_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_SPAD_KB16_ICACHE_LINES16'. (DDB-72)
+Information: In design 'accel_core_CORE_ID1_VLEN256_HBM_DATA_W256_NUM_VPUS2_NUM_MXUS2_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_SPAD_KB16_ICACHE_LINES16', the register 'end_cause_reg[7]' is removed because it is merged to 'end_cause_reg[3]'. (OPT-1215)
+Information: In design 'accel_core_CORE_ID1_VLEN256_HBM_DATA_W256_NUM_VPUS2_NUM_MXUS2_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_SPAD_KB16_ICACHE_LINES16', the register 'end_cause_reg[6]' is removed because it is merged to 'end_cause_reg[3]'. (OPT-1215)
+Information: In design 'accel_core_CORE_ID1_VLEN256_HBM_DATA_W256_NUM_VPUS2_NUM_MXUS2_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_SPAD_KB16_ICACHE_LINES16', the register 'end_cause_reg[5]' is removed because it is merged to 'end_cause_reg[3]'. (OPT-1215)
+Information: In design 'accel_core_CORE_ID1_VLEN256_HBM_DATA_W256_NUM_VPUS2_NUM_MXUS2_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_SPAD_KB16_ICACHE_LINES16', the register 'end_cause_reg[4]' is removed because it is merged to 'end_cause_reg[3]'. (OPT-1215)
+ Implement Synthetic for 'accel_core_CORE_ID1_VLEN256_HBM_DATA_W256_NUM_VPUS2_NUM_MXUS2_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_SPAD_KB16_ICACHE_LINES16'.
+  Processing 'accel_core_CORE_ID0_VLEN256_HBM_DATA_W256_NUM_VPUS2_NUM_MXUS2_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_SPAD_KB16_ICACHE_LINES16'
+Information: Added key list 'DesignWare' to design 'accel_core_CORE_ID0_VLEN256_HBM_DATA_W256_NUM_VPUS2_NUM_MXUS2_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_SPAD_KB16_ICACHE_LINES16'. (DDB-72)
+Information: In design 'accel_core_CORE_ID0_VLEN256_HBM_DATA_W256_NUM_VPUS2_NUM_MXUS2_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_SPAD_KB16_ICACHE_LINES16', the register 'end_cause_reg[7]' is removed because it is merged to 'end_cause_reg[3]'. (OPT-1215)
+Information: In design 'accel_core_CORE_ID0_VLEN256_HBM_DATA_W256_NUM_VPUS2_NUM_MXUS2_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_SPAD_KB16_ICACHE_LINES16', the register 'end_cause_reg[6]' is removed because it is merged to 'end_cause_reg[3]'. (OPT-1215)
+Information: In design 'accel_core_CORE_ID0_VLEN256_HBM_DATA_W256_NUM_VPUS2_NUM_MXUS2_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_SPAD_KB16_ICACHE_LINES16', the register 'end_cause_reg[5]' is removed because it is merged to 'end_cause_reg[3]'. (OPT-1215)
+Information: In design 'accel_core_CORE_ID0_VLEN256_HBM_DATA_W256_NUM_VPUS2_NUM_MXUS2_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_SPAD_KB16_ICACHE_LINES16', the register 'end_cause_reg[4]' is removed because it is merged to 'end_cause_reg[3]'. (OPT-1215)
+ Implement Synthetic for 'accel_core_CORE_ID0_VLEN256_HBM_DATA_W256_NUM_VPUS2_NUM_MXUS2_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_SPAD_KB16_ICACHE_LINES16'.
+  Processing 'accel_top'
+Information: In design 'accel_top', the register 'err_core_q_reg[2]' is removed because it is merged to 'err_core_q_reg[1]'. (OPT-1215)
+Information: In design 'accel_top', the register 'err_core_q_reg[3]' is removed because it is merged to 'err_core_q_reg[1]'. (OPT-1215)
+Information: In design 'accel_top', the register 'err_core_q_reg[4]' is removed because it is merged to 'err_core_q_reg[1]'. (OPT-1215)
+Information: In design 'accel_top', the register 'err_core_q_reg[5]' is removed because it is merged to 'err_core_q_reg[1]'. (OPT-1215)
+Information: In design 'accel_top', the register 'err_core_q_reg[6]' is removed because it is merged to 'err_core_q_reg[1]'. (OPT-1215)
+Information: In design 'accel_top', the register 'err_core_q_reg[7]' is removed because it is merged to 'err_core_q_reg[1]'. (OPT-1215)
+ Implement Synthetic for 'accel_top'.
+  Processing 'accel_csr_VLEN256_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_HBM_DATA_W256_ICACHE_LINES16_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_SPAD_KB16'
+ Implement Synthetic for 'accel_csr_VLEN256_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_HBM_DATA_W256_ICACHE_LINES16_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_SPAD_KB16'.
+Information: Added key list 'DesignWare' to design 'accel_csr_VLEN256_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_HBM_DATA_W256_ICACHE_LINES16_NUM_CORES2_NUM_VPUS2_NUM_MXUS2_SPAD_KB16'. (DDB-72)
+  Processing 'accel_axi_master_HBM_ADDR_W32_HBM_DATA_W256_HBM_ID_W4_ID_VALUE1'
+Information: In design 'accel_axi_master_HBM_ADDR_W32_HBM_DATA_W256_HBM_ID_W4_ID_VALUE1', the register 'addr_q_reg[4]' is removed because it is merged to 'addr_q_reg[3]'. (OPT-1215)
+  Processing 'accel_axi_master_HBM_ADDR_W32_HBM_DATA_W256_HBM_ID_W4_ID_VALUE0'
+Information: In design 'accel_axi_master_HBM_ADDR_W32_HBM_DATA_W256_HBM_ID_W4_ID_VALUE0', the register 'addr_q_reg[4]' is removed because it is merged to 'addr_q_reg[3]'. (OPT-1215)
+  Processing 'accel_axi_arbiter_N2_HBM_ADDR_W32_HBM_DATA_W256_HBM_ID_W4'
+Information: Added key list 'DesignWare' to design 'accel_axi_arbiter_N2_HBM_ADDR_W32_HBM_DATA_W256_HBM_ID_W4'. (DDB-72)
+  Processing 'accel_spad_HBM_DATA_W256_SPAD_KB16_0'
+  Processing 'accel_sram_1rw_DEPTH512_WIDTH256_0'
+CPU Load: 10%, Ram Free: 10 GB, Swap Free: 7 GB, Work Disk Free: 21 GB, Tmp Disk Free: 7 GB
+
+  Updating timing information
+Information: Updating design information... (UID-85)
+Information: The library cell 'TIELOx1_ASAP7_75t_R' in the library 'asap7sc7p5t_SIMPLE_RVT_TT_nldm_211120' is not characterized for internal power. (PWR-536)
+Information: The library cell 'TIEHIx1_ASAP7_75t_R' in the library 'asap7sc7p5t_SIMPLE_RVT_TT_nldm_211120' is not characterized for internal power. (PWR-536)
+Information: The target library(s) contains cell(s), other than black boxes, that are not characterized for internal power. (PWR-24)
+Information: Complementing port 'm_awid[0]' in design 'accel_axi_arbiter_N2_HBM_ADDR_W32_HBM_DATA_W256_HBM_ID_W4'.
+	 The new name of the port is 'm_awid[0]_BAR'. (OPT-319)
+Information: Complementing port 'm_arid[0]' in design 'accel_axi_arbiter_N2_HBM_ADDR_W32_HBM_DATA_W256_HBM_ID_W4'.
+	 The new name of the port is 'm_arid[0]_BAR'. (OPT-319)
+Information: Complementing port 'busy' in design 'accel_core_CORE_ID1_VLEN256_HBM_DATA_W256_NUM_VPUS2_NUM_MXUS2_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_SPAD_KB16_ICACHE_LINES16'.
+	 The new name of the port is 'busy_BAR'. (OPT-319)
+Information: Complementing port 'busy' in design 'accel_core_CORE_ID0_VLEN256_HBM_DATA_W256_NUM_VPUS2_NUM_MXUS2_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_SPAD_KB16_ICACHE_LINES16'.
+	 The new name of the port is 'busy_BAR'. (OPT-319)
+Information: Complementing port 'end_cause[2]' in design 'accel_core_CORE_ID1_VLEN256_HBM_DATA_W256_NUM_VPUS2_NUM_MXUS2_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_SPAD_KB16_ICACHE_LINES16'.
+	 The new name of the port is 'end_cause[2]_BAR'. (OPT-319)
+Information: Complementing port 'abort' in design 'accel_core_CORE_ID0_VLEN256_HBM_DATA_W256_NUM_VPUS2_NUM_MXUS2_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_SPAD_KB16_ICACHE_LINES16'.
+	 The new name of the port is 'abort_BAR'. (OPT-319)
+Information: Complementing port 'abort' in design 'accel_core_CORE_ID1_VLEN256_HBM_DATA_W256_NUM_VPUS2_NUM_MXUS2_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_SPAD_KB16_ICACHE_LINES16'.
+	 The new name of the port is 'abort_BAR'. (OPT-319)
+Information: Complementing port 'red_max' in design 'accel_vpu_VLEN256_1'.
+	 The new name of the port is 'red_max_BAR'. (OPT-319)
+Information: Complementing port 'ar_vf' in design 'accel_vpu_VLEN256_1'.
+	 The new name of the port is 'ar_vf_BAR'. (OPT-319)
+Information: Complementing port 'red_vf' in design 'accel_vpu_VLEN256_1'.
+	 The new name of the port is 'red_vf_BAR'. (OPT-319)
+
+                                  TOTAL                                                
+   ELAPSED            WORST NEG   SETUP    DESIGN                              LEAKAGE 
+    TIME      AREA      SLACK     COST    RULE COST         ENDPOINT            POWER  
+  --------- --------- --------- --------- --------- ------------------------- ---------
+    0:49:37  160890.6 25385672704.00 857992194949120.0 9970336200.3                           185167152.0000
+    0:49:37  160890.6 25385672704.00 857992194949120.0 9970336200.3                           185167152.0000
+Information: Complementing port 'ar_vf' in design 'accel_vpu_VLEN256_0'.
+	 The new name of the port is 'ar_vf_BAR'. (OPT-319)
+Information: Complementing port 'red_vf' in design 'accel_vpu_VLEN256_0'.
+	 The new name of the port is 'red_vf_BAR'. (OPT-319)
+    0:49:48  160890.7 25385672704.00 857992194949120.0 9970335457.5                           185167264.0000
+    0:49:49  161062.9 25385672704.00 857992194949120.0 9968317701.6                           185469296.0000
+    0:49:52  161129.6 25385672704.00 857992194949120.0 9967539388.2                           185586352.0000
+    0:49:53  161301.7 25385672704.00 857992194949120.0 9965521632.3                           185888384.0000
+
+  Beginning Mapping Optimizations  (Ultra High effort)
+  -------------------------------
+Information: Updating design information... (UID-85)
+Warning: Only placeholder alibs were found. Proceeding with library analysis. (OPT-1311)
+  Mapping Optimization (Phase 1)
+  Mapping Optimization (Phase 2)
+  Mapping Optimization (Phase 3)
+Information: Added key list 'DesignWare' to design 'accel_top'. (DDB-72)
+
+                                  TOTAL                                                
+   ELAPSED            WORST NEG   SETUP    DESIGN                              LEAKAGE 
+    TIME      AREA      SLACK     COST    RULE COST         ENDPOINT            POWER  
+  --------- --------- --------- --------- --------- ------------------------- ---------
+    1:42:45  162128.8    914.16 1328944.5    1285.2                           200797840.0000
+    1:45:35  161767.1    954.70 7435997.0    1330.8                           200302656.0000
+
+  Beginning Constant Register Removal
+  -----------------------------------
+    1:47:00  161029.6    954.70 7185340.5     652.0                           200073872.0000
+    1:47:09  161214.9    954.70 7179575.5     652.0                           200712016.0000
+    1:47:18  161172.5    198.86 6921633.5      43.7                           201050032.0000
+
+  Beginning Global Optimizations
+  ------------------------------
+  Numerical Synthesis (Phase 1)
+  Numerical Synthesis (Phase 2)
+  Global Optimization (Phase 1)
+  Global Optimization (Phase 2)
+  Global Optimization (Phase 3)
+  Global Optimization (Phase 4)
+  Global Optimization (Phase 5)
+  Global Optimization (Phase 6)
+  Global Optimization (Phase 7)
+  Global Optimization (Phase 8)
+  Global Optimization (Phase 9)
+  Global Optimization (Phase 10)
+  Global Optimization (Phase 11)
+  Global Optimization (Phase 12)
+  Global Optimization (Phase 13)
+  Global Optimization (Phase 14)
+  Global Optimization (Phase 15)
+  Global Optimization (Phase 16)
+  Global Optimization (Phase 17)
+  Global Optimization (Phase 18)
+  Global Optimization (Phase 19)
+  Global Optimization (Phase 20)
+  Global Optimization (Phase 21)
+  Global Optimization (Phase 22)
+  Global Optimization (Phase 23)
+  Global Optimization (Phase 24)
+  Global Optimization (Phase 25)
+  Global Optimization (Phase 26)
+  Global Optimization (Phase 27)
+  Global Optimization (Phase 28)
+  Global Optimization (Phase 29)
+  Global Optimization (Phase 30)
+  Global Optimization (Phase 31)
+  Global Optimization (Phase 32)
+  Global Optimization (Phase 33)
+  Global Optimization (Phase 34)
+  Mapping 'accel_core_CORE_ID1_VLEN256_HBM_DATA_W256_NUM_VPUS2_NUM_MXUS2_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_SPAD_KB16_ICACHE_LINES16_DP_OP_451_927_559_3'
+  Mapping 'accel_mxu_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_0_DW01_sub_87'
+  Mapping 'accel_mxu_MAT_DIM16_NUM_TREGS4_NUM_ACCS2_MXU_ROWS4_0_DW01_sub_88'
+
+  Beginning Isolate Ports
+  -----------------------
+
+  Beginning Delay Optimization
+  ----------------------------
+    2:00:57  146971.7    281.05 12808382.0    4041.7                           162064896.0000
+    2:08:54  147437.4    147.85 6175458.5    4012.6                           163418208.0000
+    2:08:54  147437.4    147.85 6175458.5    4012.6                           163418208.0000
+    2:08:58  147437.7    147.82 6172898.0    4012.6                           163418912.0000
+    2:12:00  146936.5    173.62 5559487.5    4012.6                           162738784.0000
+    2:14:15  145842.2    200.61 5910257.5    4012.6                           161372672.0000
+
+  Beginning WLM Backend Optimization
+  --------------------------------------
+    2:19:15  146589.1    198.46 6751345.0    4183.4                           162770912.0000
+    2:19:22  146551.8    198.46 6749559.0    4141.5                           162673840.0000
+    2:19:32  146516.1    198.46 6749220.0    4117.9                           162576512.0000
+    2:19:45  146478.0    198.46 6745418.5    4086.7                           162470256.0000
+    2:19:56  146445.2    198.46 6741856.0    4033.7                           162369504.0000
+    2:20:20  146405.6    198.46 6739583.5    3892.5                           162268016.0000
+    2:20:40  146360.3    198.46 6728108.5    3807.4                           162164704.0000
+    2:21:02  146305.2    198.46 6726491.0    3683.9                           162048592.0000
+    2:21:21  146261.9    198.46 6663953.0    3643.7                           161964928.0000
+    2:21:37  146220.1    198.45 6653767.0    3624.4                           161864128.0000
+    2:21:48  146175.6    198.45 6602117.5    3611.5                           161765504.0000
+    2:21:58  146133.1    198.45 6575589.0    3596.4                           161669984.0000
+    2:22:17  146088.6    198.45 6550985.0    3589.0                           161555984.0000
+    2:22:27  146043.7    198.45 6534312.5    3589.0                           161447680.0000
+    2:22:41  146002.6    198.45 6520931.5    3580.7                           161350544.0000
+    2:22:52  145956.1    198.45 6455627.0    3580.7                           161234688.0000
+    2:23:08  145913.4    198.45 6432729.0    3575.2                           161141984.0000
+    2:23:19  145877.7    198.45 6400159.0    3433.2                           161056656.0000
+    2:23:39  145842.7    198.45 6376015.5    3300.3                           160962816.0000
+    2:23:47  145801.2    198.45 6369934.0    3222.0                           160874592.0000
+    2:23:57  145759.8    198.45 6355168.0    3138.0                           160787072.0000
+    2:24:11  145699.6    198.45 6338451.0    3128.7                           160675904.0000
+    2:24:21  145641.9    198.45 6316708.0    3116.1                           160566832.0000
+    2:24:33  145580.8    196.08 6297548.5    3115.8                           160443744.0000
+    2:24:41  145529.3    195.80 6284458.5    3115.8                           160325616.0000
+    2:24:48  145482.4    192.67 6262890.0    3115.8                           160221472.0000
+    2:24:57  145428.6    192.67 6246685.0    3109.3                           160122880.0000
+    2:25:00  145394.5    192.67 6070680.5    3109.3                           160068048.0000
+    2:25:09  145370.1    192.67 6031695.0    3109.3                           160022880.0000
+    2:25:27  145317.9    192.67 5946249.0    3095.4                           159915328.0000
+    2:25:29  145300.5    192.67 5895351.0    3095.4                           159885216.0000
+    2:25:33  145272.1    192.67 5790803.0    3093.7                           159836240.0000
+    2:25:45  145158.4    192.67 5790803.0    2994.5                           159624960.0000
+    2:25:56  145012.4    192.67 5790803.0    2919.8                           159355568.0000
+    2:26:17  144868.9    192.67 5790803.0    2852.4                           159084896.0000
+    2:26:51  144835.4    192.67 5789318.5    2852.4                           159013200.0000
+    2:26:52  144823.5    192.67 5762087.5    2852.4                           158995280.0000
+    2:27:06  144742.9    192.67 5750622.5    2849.5                           158823040.0000
+    2:27:18  144619.2    192.67 5750622.5    2738.7                           158600144.0000
+    2:27:30  144471.3    192.67 5750622.5    2657.4                           158323872.0000
+    2:27:49  144390.7    192.67 5742628.0    2657.4                           158178336.0000
+    2:27:55  144361.1    192.67 5727620.5    2657.4                           158116208.0000
+    2:29:32  144281.4    192.67 5725121.5    2657.4                           157925344.0000
+    2:30:58  144202.3    192.67 5724964.0    2604.7                           157766544.0000
+    2:31:19  144061.0    192.67 5723545.5    2492.9                           157484144.0000
+    2:31:28  143941.6    192.67 5723545.5    2466.4                           157262080.0000
+    2:31:59  143812.2    192.67 5722046.0    2461.2                           156999248.0000
+    2:32:49  143765.2    192.67 5709591.5    2434.9                           156900496.0000
+    2:32:59  143725.8    192.67 5683108.0    2244.6                           156821760.0000
+    2:33:25  143690.2    192.67 5680498.5    2244.6                           156749184.0000
+    2:33:31  143645.9    192.67 5653089.0    2229.0                           156668544.0000
+    2:33:36  143557.0    192.67 5663354.5    2158.8                           156495872.0000
+    2:33:51  143497.8    192.67 5615729.5    2128.0                           156377696.0000
+    2:34:08  143473.7    192.67 5616657.5    2157.0                           156327296.0000
+    2:34:15  143451.1    191.92 5620946.0    2157.0                           156286816.0000
+    2:34:21  143421.5    191.92 5618084.5    2157.0                           156231776.0000
+    2:34:26  143392.7    191.91 5618697.0    2157.0                           156178272.0000
+    2:34:31  143363.7    191.91 5619248.0    2157.0                           156123600.0000
+    2:34:35  143333.5    191.91 5620434.5    2157.0                           156066992.0000
+    2:34:46  143302.0    191.91 5620754.5    2157.0                           156008976.0000
+    2:34:48  143283.3    191.48 5618889.5    2154.2                           155975184.0000
+    2:34:50  143274.7    191.48 5612491.0    2154.2                           155964144.0000
+    2:34:51  143269.4    191.48 5607225.5    2154.2                           155957728.0000
+    2:34:54  143261.3    191.48 5606076.0    2154.2                           155947056.0000
+    2:34:57  143260.2    191.48 5606157.5    2154.2                           155945072.0000
+    2:34:59  143245.3    191.48 5608748.5    2151.1                           155925408.0000
+    2:35:01  143237.4    191.48 5609035.5    2149.6                           155914112.0000
+    2:35:04  143226.3    191.48 5607495.0    2149.5                           155897952.0000
+    2:35:07  143218.4    191.48 5609734.5    2146.4                           155885696.0000
+    2:35:10  143205.6    191.48 5607664.5    2146.4                           155869184.0000
+    2:35:13  143183.6    191.48 5604010.5    2146.4                           155841792.0000
+    2:35:15  143170.7    191.48 5602639.5    2146.4                           155824848.0000
+    2:35:16  143160.3    191.48 5598202.0    2146.4                           155811632.0000
+    2:35:18  143159.9    191.48 5598525.5    2146.4                           155811008.0000
+    2:35:20  143137.6    187.74 5589047.0    2146.4                           155782624.0000
+    2:35:22  143112.8    187.74 5583715.0    2146.4                           155749712.0000
+    2:35:27  143079.6    187.74 5577322.0    2146.4                           155706800.0000
+    2:35:33  143060.2    187.74 5570798.5    2146.4                           155678032.0000
+    2:35:35  143035.5    187.74 5562682.5    2146.4                           155645248.0000
+    2:35:54  142986.0    187.74 5561481.0    2132.9                           155544048.0000
+    2:36:01  142969.1    187.74 5562386.0    2100.3                           155509024.0000
+    2:36:26  142962.3    109.21 4360728.5    2088.9                           155502256.0000
+    2:36:43  142943.5    103.65 3951661.2    2082.8                           155476336.0000
+    2:36:55  142920.6    103.63 3563820.0    2082.8                           155442592.0000
+    2:36:56  142917.1    103.63 3505740.8    2082.8                           155438320.0000
+    2:36:57  142917.1    103.63 3505740.8    2082.8                           155438320.0000
+    2:36:57  142917.1    103.63 3505740.8    2082.8                           155438320.0000
+    2:36:59  142917.1    103.63 3505740.8    2082.8                           155438320.0000
+    2:42:38  136062.1     94.19 1865096.5      36.8                           139898672.0000
+    2:42:40  136062.1     94.19 1865096.5      36.8                           139898672.0000
+    3:06:38  137075.8     11.22   25614.7      41.7                           141522320.0000
+    3:06:38  137075.8     11.22   25614.7      41.7                           141522320.0000
+    3:06:52  137094.8      0.00       0.0      41.7                           141571168.0000
+    3:06:53  137094.8      0.00       0.0      41.7                           141571168.0000
+    3:06:53  137094.8      0.00       0.0      41.7                           141571168.0000
+    3:06:53  137094.8      0.00       0.0      41.7                           141571168.0000
+    3:06:53  137094.8      0.00       0.0      41.7                           141571168.0000
+    3:06:53  137094.8      0.00       0.0      41.7                           141571168.0000
+    3:06:53  137094.8      0.00       0.0      41.7                           141571168.0000
+    3:06:54  137094.8      0.00       0.0      41.7                           141571168.0000
+    3:06:54  137094.8      0.00       0.0      41.7                           141571168.0000
+    3:06:54  137094.8      0.00       0.0      41.7                           141571168.0000
+    3:06:54  137094.8      0.00       0.0      41.7                           141571168.0000
+    3:06:54  137094.8      0.00       0.0      41.7                           141571168.0000
+    3:06:54  137094.8      0.00       0.0      41.7                           141571168.0000
+    3:06:55  137094.8      0.00       0.0      41.7                           141571168.0000
+    3:06:55  137094.8      0.00       0.0      41.7                           141571168.0000
+
+
+  Beginning Design Rule Fixing  (max_transition)  (max_capacitance)
+  ----------------------------
+
+                                  TOTAL                                                
+   ELAPSED            WORST NEG   SETUP    DESIGN                              LEAKAGE 
+    TIME      AREA      SLACK     COST    RULE COST         ENDPOINT            POWER  
+  --------- --------- --------- --------- --------- ------------------------- ---------
+    3:06:55  137094.8      0.00       0.0      41.7                           141571168.0000
+  Global Optimization (Phase 35)
+  Global Optimization (Phase 36)
+  Global Optimization (Phase 37)
+    3:07:22  137095.7      0.00       0.0       0.0                           141571808.0000
+    3:07:22  137095.7      0.00       0.0       0.0                           141571808.0000
+    3:07:22  137095.7      0.00       0.0       0.0                           141571808.0000
+    3:07:22  137095.7      0.00       0.0       0.0                           141571808.0000
+    3:07:24  137095.7      0.00       0.0       0.0                           141571808.0000
+    3:11:18  135855.5      1.08    1757.7       1.6                           138397120.0000
+    3:11:20  135855.5      1.08    1757.7       1.6                           138397120.0000
+    3:15:05  135889.2      0.01       0.0       1.6                           138462128.0000
+    3:15:05  135889.2      0.01       0.0       1.6                           138462128.0000
+    3:15:05  135889.2      0.00       0.0       1.6                           138461968.0000
+    3:15:06  135889.2      0.00       0.0       1.6                           138461968.0000
+    3:15:35  135889.2      0.00       0.0       1.6                           138461968.0000
+    3:15:35  135889.2      0.00       0.0       1.6                           138461968.0000
+    3:15:54  135889.1      0.00       0.0       1.6                           138461808.0000
+    3:15:55  135889.1      0.00       0.0       1.6                           138461808.0000
+    3:15:55  135889.1      0.00       0.0       1.6                           138461808.0000
+    3:15:55  135889.1      0.00       0.0       1.6                           138461808.0000
+    3:15:55  135889.1      0.00       0.0       1.6                           138461808.0000
+    3:15:55  135889.1      0.00       0.0       1.6                           138461808.0000
+    3:15:55  135889.1      0.00       0.0       1.6                           138461808.0000
+    3:15:56  135889.1      0.00       0.0       1.6                           138461808.0000
+    3:15:56  135889.1      0.00       0.0       1.6                           138461808.0000
+    3:15:56  135889.1      0.00       0.0       1.6                           138461808.0000
+    3:15:56  135889.1      0.00       0.0       1.6                           138461808.0000
+
+                                  TOTAL                                                
+   ELAPSED            WORST NEG   SETUP    DESIGN                              LEAKAGE 
+    TIME      AREA      SLACK     COST    RULE COST         ENDPOINT            POWER  
+  --------- --------- --------- --------- --------- ------------------------- ---------
+    3:16:16  135878.6      0.00       0.0       1.6                           138461360.0000
+    3:17:38  135513.1      3.03      39.8       1.7                           138157088.0000
+    3:17:44  135514.6      0.00       0.0       1.7                           138160192.0000
+    3:17:46  135514.6      0.00       0.0       1.7                           138160192.0000
+    3:20:13  135403.0      0.45      85.1       4.6                           137815664.0000
+    3:20:19  135395.1      0.45      95.0       4.6                           137802976.0000
+    3:20:24  135387.7      0.45     102.3       4.6                           137789040.0000
+    3:20:26  135383.3      0.45     102.4       4.6                           137778192.0000
+    3:20:34  135379.8      0.45     102.4       4.6                           137770304.0000
+    3:20:37  135377.1      0.45     102.7       4.6                           137763696.0000
+    3:20:40  135373.0      0.45     103.4       4.6                           137753776.0000
+    3:20:43  135364.6      0.45     110.1       4.6                           137739056.0000
+    3:21:00  135357.3      0.45     122.1       4.6                           137726464.0000
+    3:21:05  135350.7      0.45     126.6       4.6                           137713936.0000
+    3:21:28  135344.0      0.45     126.6       4.6                           137700080.0000
+    3:21:34  135341.1      0.45     129.3       4.6                           137688640.0000
+    3:22:03  135328.6      0.45     134.5       4.6                           137662768.0000
+    3:22:37  135259.7      0.45     134.8       4.6                           137576432.0000
+    3:23:00  135208.9      0.45     135.3       4.6                           137513296.0000
+    3:24:48  135187.0      0.45     135.3       4.6                           137481024.0000
+    3:25:32  135129.5      0.45     136.6       4.6                           137406976.0000
+    3:26:21  135108.7      0.45     138.1       4.6                           137377776.0000
+    3:26:30  135097.9      0.45     138.5       4.6                           137358368.0000
+    3:26:50  135076.6      0.45     149.8       4.6                           137326624.0000
+    3:26:57  135060.1      0.45     158.3       4.6                           137305360.0000
+    3:27:08  135047.2      0.45     182.4       4.6                           137286352.0000
+    3:27:14  135034.2      0.45     183.2       4.6                           137265424.0000
+    3:27:17  135019.4      0.45     184.2       4.6                           137242272.0000
+    3:27:21  135011.3      0.45     170.8       4.6                           137229360.0000
+    3:27:23  135006.2      0.45     184.5       4.6                           137220816.0000
+    3:27:27  135004.5      0.45     185.9       4.6                           137218400.0000
+    3:27:29  135002.8      0.45     185.9       4.6                           137215344.0000
+    3:27:32  135000.6      0.45     185.7       4.6                           137211984.0000
+    3:27:35  134999.4      0.45     185.7       4.6                           137210080.0000
+    3:27:39  134998.8      0.45     186.6       4.6                           137208912.0000
+    3:27:41  134997.0      0.45     186.4       4.6                           137206240.0000
+    3:27:44  134996.3      0.45     185.7       4.6                           137205552.0000
+    3:27:47  134993.9      0.45     185.3       4.6                           137202128.0000
+    3:27:49  134992.1      0.45     185.3       4.6                           137200000.0000
+    3:27:50  134987.4      0.45     185.9       4.6                           137192224.0000
+    3:27:53  134986.0      0.45     186.2       4.6                           137189504.0000
+    3:27:57  134983.3      0.45     185.1       4.6                           137184464.0000
+    3:28:01  134978.6      0.45     186.0       4.6                           137178640.0000
+    3:28:06  134974.6      0.45     186.3       4.6                           137172992.0000
+    3:28:12  134969.7      0.45     180.0       4.6                           137167168.0000
+    3:28:30  134962.2      0.45     183.0       4.6                           137155392.0000
+    3:28:49  134941.5      0.45     181.6       4.6                           137100992.0000
+    3:29:10  134931.8      0.45     235.8       4.6                           137075984.0000
+    3:29:27  134909.2      0.45     293.0       4.6                           137042544.0000
+    3:29:44  134912.7      0.00       0.0       0.0                           137052160.0000
+    3:29:44  134912.7      0.00       0.0       0.0                           137052160.0000
+    3:29:44  134912.7      0.00       0.0       0.0                           137052160.0000
+    3:29:44  134912.7      0.00       0.0       0.0                           137052160.0000
+    3:29:50  134912.7      0.00       0.0       0.0                           137052160.0000
+    3:29:50  134912.7      0.00       0.0       0.0                           137052160.0000
+    3:33:39  134827.7      0.00       0.0      22.7                           136785488.0000
+CPU Load: 14%, Ram Free: 3 GB, Swap Free: 7 GB, Work Disk Free: 21 GB, Tmp Disk Free: 7 GB
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_INVBUF_RVT_TT_nldm_220122.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_128x128_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_128x32_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_128x64_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_256x128_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_256x32_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_256x64_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_512x128_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_512x32_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_512x64_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_64x128_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_64x32_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/sram/db/TT/sram1rw_64x64_TT.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_AO_RVT_TT_nldm_211120.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_OA_RVT_TT_nldm_211120.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_SEQ_RVT_TT_nldm_220123.db'
+Loading db file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/pdk/asap7/db/TT_RVT/asap7sc7p5t_SIMPLE_RVT_TT_nldm_211120.db'
+
+
+Note: Symbol # after min delay cost means estimated hold TNS across all active scenarios 
+
+
+  Optimization Complete
+  ---------------------
+Warning: Design 'accel_top' contains 1 high-fanout nets. A fanout number of 1000 will be used for delay calculations involving these nets. (TIM-134)
+     Net 'g_core[1].u_spad/g_sram.u_sram/clk': 121459 load(s), 1 driver(s)
+  Loading target library 'asap7sc7p5t_AO_RVT_TT_nldm_211120'
+  Loading target library 'asap7sc7p5t_OA_RVT_TT_nldm_211120'
+  Loading target library 'asap7sc7p5t_SEQ_RVT_TT_nldm_220123'
+  Loading target library 'asap7sc7p5t_SIMPLE_RVT_TT_nldm_211120'
+Information: State dependent leakage is now switched from off to on.
+Information: Propagating switching activity (low effort zero delay simulation). (PWR-6)
+Warning: Design has unannotated black box outputs. (PWR-428)
+CPU Load: 11%, Ram Free: 3 GB, Swap Free: 7 GB, Work Disk Free: 21 GB, Tmp Disk Free: 7 GB
+Information: Total number of MV cells in the design.
+----------------------------------------------------------------------------------------------------
+ MV Cells                                           Total Number                                   
+----------------------------------------------------------------------------------------------------
+ Level Shifter:                                     0                                             
+ Enable Level Shifter:                              0                                             
+ Isolation Cell:                                    0                                             
+ Retention Cell:                                    0                                             
+ Retention Clamp Cell:                              0                                             
+ Switch Cell:                                       0                                             
+ Always-On Cell:                                    0                                             
+ Repeater Cell:                                     0                                             
+
+----------------------------------------------------------------------------------------------------
+Unmapped MV Cells 
+----------------------------------------------------------------------------------------------------
+0 Isolation Cells are unmapped 
+0 Retention Clamp Cells are unmapped 
+----------------------------------------------------------------------------------------------------
+1
+#------------------------------------------------------------------------------
+# Reports and outputs
+#------------------------------------------------------------------------------
+report_qor                                  > reports/qor.rpt
+report_area -hierarchy                      > reports/area.rpt
+report_timing -max_paths 10 -nworst 1       > reports/timing.rpt
+report_constraint -all_violators            > reports/violators.rpt
+report_power -hierarchy                     > reports/power.rpt
+report_reference -hierarchy                 > reports/reference.rpt
+# Every SRAM macro instance with its area (empty with SRAM=flops)
+set sram_cells [get_cells -quiet -hierarchical -filter "ref_name =~ sram1rw_*"]
+{g_core[0].u_spad/g_sram.u_sram/g_macro.g_bank[0].g_col[0].g_m.u_mem g_core[0].u_spad/g_sram.u_sram/g_macro.g_bank[0].g_col[1].g_m.u_mem g_core[1].u_spad/g_sram.u_sram/g_macro.g_bank[0].g_col[0].g_m.u_mem g_core[1].u_spad/g_sram.u_sram/g_macro.g_bank[0].g_col[1].g_m.u_mem}
+if {[sizeof_collection $sram_cells] > 0} {
+  report_cell -nosplit $sram_cells          > reports/sram.rpt
+} else {
+  echo "No SRAM macros (SRAM=$sram_mode)"  > reports/sram.rpt
+}
+check_design                                > reports/check_design_post.rpt
+write -format ddc     -hierarchy -output accel_top.ddc
+Writing ddc file 'accel_top.ddc'.
+1
+write -format verilog -hierarchy -output accel_top.v
+Writing verilog file '/home/bbianco3/SIGarch/sigarch-ml-accelerator-template/build/synth/asap7_TT_RVT/v256_m16_t4_a2_r4_d256_i16_c2_s16_p1_1.2ns/accel_top.v'.
+Warning: Verilog 'assign' or 'tran' statements are written out. (VO-4)
+Warning: Verilog writer has added 26 nets to module accel_top using SYNOPSYS_UNCONNECTED_ as prefix.  Please use the change_names command to make the correct changes before invoking the verilog writer.  (VO-11)
+1
+puts "INFO: synthesis finished. Worst slack:"
+INFO: synthesis finished. Worst slack:
+report_timing -max_paths 1 -nworst 1 -significant_digits 3
+Information: Updating design information... (UID-85)
+Warning: Design 'accel_top' contains 1 high-fanout nets. A fanout number of 1000 will be used for delay calculations involving these nets. (TIM-134)
+ 
+****************************************
+Report : timing
+        -path full
+        -delay max
+        -max_paths 1
+Design : accel_top
+Version: W-2024.09
+Date   : Tue Nov 17 23:21:15 2026
+****************************************
+
+ # A fanout number of 1000 was used for high fanout net computations.
+
+Operating Conditions: PVT_0P7V_25C   Library: asap7sc7p5t_AO_RVT_TT_nldm_211120
+Wire Load Model Mode: top
+
+  Startpoint: g_core[1].u_core/insn_reg[22]
+              (rising edge-triggered flip-flop clocked by clk)
+  Endpoint: g_core[1].u_core/pc_reg[31]
+            (rising edge-triggered flip-flop clocked by clk)
+  Path Group: clk
+  Path Type: max
+
+  Point                                                   Incr       Path
+  --------------------------------------------------------------------------
+  clock clk (rise edge)                                  0.000      0.000
+  clock network delay (ideal)                            0.000      0.000
+  g_core[1].u_core/insn_reg[22]/CLK (DFFHQNx1_ASAP7_75t_R)
+                                                         0.000 #    0.000 r
+  g_core[1].u_core/insn_reg[22]/QN (DFFHQNx1_ASAP7_75t_R)
+                                                        85.136     85.136 r
+  g_core[1].u_core/U1448/Y (NOR3x1_ASAP7_75t_R)         49.175    134.311 f
+  g_core[1].u_core/U1449/Y (NAND2x1_ASAP7_75t_R)        79.905    214.216 r
+  g_core[1].u_core/U1503/Y (BUFx2_ASAP7_75t_R)          73.780    287.996 r
+  g_core[1].u_core/U1776/Y (OAI22x1_ASAP7_75t_R)        20.087    308.084 f
+  g_core[1].u_core/U1782/Y (OR4x1_ASAP7_75t_R)          42.250    350.334 f
+  g_core[1].u_core/U1795/Y (NOR2x1_ASAP7_75t_R)         14.661    364.995 r
+  g_core[1].u_core/U1796/Y (NAND3x1_ASAP7_75t_R)        17.224    382.219 f
+  g_core[1].u_core/U3831/Y (INVx1_ASAP7_75t_R)          21.006    403.225 r
+  g_core[1].u_core/U3834/Y (NAND2x1_ASAP7_75t_R)        19.704    422.928 f
+  g_core[1].u_core/U4028/Y (NAND3x1_ASAP7_75t_R)        27.193    450.122 r
+  g_core[1].u_core/U4029/Y (NOR2x1_ASAP7_75t_R)         16.195    466.317 f
+  g_core[1].u_core/U364/Y (AND3x1_ASAP7_75t_R)          21.887    488.204 f
+  g_core[1].u_core/U367/Y (INVx1_ASAP7_75t_R)           12.207    500.411 r
+  g_core[1].u_core/U366/Y (OAI22x1_ASAP7_75t_R)         12.097    512.508 f
+  g_core[1].u_core/U4056/Y (OAI21x1_ASAP7_75t_R)        14.112    526.620 r
+  g_core[1].u_core/U4057/Y (AOI21x1_ASAP7_75t_R)        15.162    541.782 f
+  g_core[1].u_core/U4084/Y (AOI21x1_ASAP7_75t_R)        14.710    556.492 r
+  g_core[1].u_core/U4085/Y (NOR2x1_ASAP7_75t_R)         11.774    568.266 f
+  g_core[1].u_core/U4105/Y (AOI211x1_ASAP7_75t_R)       24.795    593.061 r
+  g_core[1].u_core/U4106/Y (OAI21x1_ASAP7_75t_R)        19.273    612.334 f
+  g_core[1].u_core/U372/Y (NAND2x1_ASAP7_75t_R)         26.061    638.395 r
+  g_core[1].u_core/U4107/Y (NAND2x1_ASAP7_75t_R)        54.684    693.078 f
+  g_core[1].u_core/U4156/Y (AO22x1_ASAP7_75t_R)         50.057    743.135 f
+  g_core[1].u_core/U270/Y (OR2x2_ASAP7_75t_R)           30.837    773.972 f
+  g_core[1].u_core/U268/Y (NAND2x1_ASAP7_75t_R)         19.503    793.474 r
+  g_core[1].u_core/U267/Y (NOR2x1_ASAP7_75t_R)          16.676    810.150 f
+  g_core[1].u_core/U266/Y (NAND2x1_ASAP7_75t_R)         20.962    831.112 r
+  g_core[1].u_core/U369/Y (NOR2x1_ASAP7_75t_R)          14.766    845.877 f
+  g_core[1].u_core/U4216/Y (AOI21x1_ASAP7_75t_R)        26.233    872.111 r
+  g_core[1].u_core/U341/Y (OA21x2_ASAP7_75t_R)          32.090    904.201 r
+  g_core[1].u_core/U4222/Y (OAI21x1_ASAP7_75t_R)        13.419    917.620 f
+  g_core[1].u_core/U4225/Y (AOI21x1_ASAP7_75t_R)        27.555    945.175 r
+  g_core[1].u_core/U330/Y (OA21x2_ASAP7_75t_R)          32.038    977.213 r
+  g_core[1].u_core/U4232/Y (OAI22x1_ASAP7_75t_R)        15.527    992.740 f
+  g_core[1].u_core/U4235/Y (AOI21x1_ASAP7_75t_R)        17.898   1010.637 r
+  g_core[1].u_core/DP_OP_465_863_4269/U18/CON (FAx1_ASAP7_75t_R)
+                                                        25.929   1036.566 f
+  g_core[1].u_core/U4113/Y (AOI21x1_ASAP7_75t_R)        21.260   1057.826 r
+  g_core[1].u_core/DP_OP_465_863_4269/U8/CON (FAx1_ASAP7_75t_R)
+                                                        25.069   1082.895 f
+  g_core[1].u_core/DP_OP_465_863_4269/U7/CON (FAx1_ASAP7_75t_R)
+                                                        30.135   1113.030 r
+  g_core[1].u_core/U60/Y (XOR2x2_ASAP7_75t_R)           32.262   1145.292 f
+  g_core[1].u_core/U14059/Y (AOI211x1_ASAP7_75t_R)      13.671   1158.963 r
+  g_core[1].u_core/pc_reg[31]/D (DFFHQNx1_ASAP7_75t_R)
+                                                         0.000   1158.963 r
+  data arrival time                                              1158.963
+
+  clock clk (rise edge)                               1200.000   1200.000
+  clock network delay (ideal)                            0.000   1200.000
+  clock uncertainty                                    -24.000   1176.000
+  g_core[1].u_core/pc_reg[31]/CLK (DFFHQNx1_ASAP7_75t_R)
+                                                         0.000   1176.000 r
+  library setup time                                   -17.036   1158.964
+  data required time                                             1158.964
+  --------------------------------------------------------------------------
+  data required time                                             1158.964
+  data arrival time                                              -1158.963
+  --------------------------------------------------------------------------
+  slack (MET)                                                       0.000
+
+
+1
+exit
+
+Memory usage for this session 5086 Mbytes.
+Memory usage for this session including child processes 5447 Mbytes.
+CPU usage for this session 13187 seconds ( 3.66 hours ).
+Elapsed time for this session 13311 seconds ( 3.70 hours ).
+
+Thank you...
+Reports are in /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/build/synth/asap7_TT_RVT/v256_m16_t4_a2_r4_d256_i16_c2_s16_p1_1.2ns/reports/
+limits (competition.json) for /home/bbianco3/SIGarch/sigarch-ml-accelerator-template/build/synth/asap7_TT_RVT/v256_m16_t4_a2_r4_d256_i16_c2_s16_p1_1.2ns
+  timing : worst slack 0 at the synthesized clock period  -> met
+  area   : 134828 um^2, limit 200000 um^2 (67 %)  -> ok
