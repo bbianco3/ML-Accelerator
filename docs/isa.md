@@ -185,6 +185,15 @@ blocked matrices map onto these instructions.
 | Assembly | Encoding | Semantics |
 |---|---|---|
 | `barrier` | `0x0000007B` | wait until every launched core is waiting at a barrier or has finished (`ecall` or fault), then continue together |
+| `hcpy rd, rs1, rs2` | R-type, funct3 = 1, funct7 = 0 | copy `x[rs2]` halfwords (bf16 elements) from address `x[rs1]` to address `x[rd]`; `rd` is read, not written |
+
+`hcpy` takes any 2-byte-aligned source and destination, in HBM or the
+scratchpad, and any count (0 copies nothing). It exists for im2col, whose
+runs of `K x Cin` elements start at arbitrary element addresses. An odd
+source or destination address is `MISALIGNED`, an address outside memory
+`BUS`. The source and destination must not overlap. The hardware moves one
+chunk per write, a chunk being whatever fits before the source or the
+destination crosses a bus beat.
 
 Other encodings in custom-3 are `ILLEGAL`. Writes to HBM issued before a
 barrier are visible to all cores after it (each core finishes every memory

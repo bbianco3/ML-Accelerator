@@ -249,4 +249,11 @@
   .insn i 0x7B, 0, x0, x0, 0
 .endm
 
+// hcpy rdst, rsrc, rn: copy x[rn] bf16 elements (halfwords) from address
+// x[rsrc] to address x[rdst]. Any 2-byte-aligned addresses, HBM or
+// scratchpad. rdst is READ, not written. The regions must not overlap.
+.macro hcpy rdst, rsrc, rn
+  .insn r 0x7B, 1, 0x00, \rdst, \rsrc, \rn
+.endm
+
 #endif // ACCEL_ISA_H

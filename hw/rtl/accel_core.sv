@@ -20,6 +20,9 @@
 //                                                 |       (mld/mst/msta: MAT_DIM rows,
 //                                                 |        one memory access each)
 //                                                 +--> MXU_WAIT -> FETCH (mmacc)
+//                                                 +--> HCPY_RD <-> HCPY_WR -> FETCH (hcpy:
+//                                                 |       copy a run of halfwords, one
+//                                                 |       beat-sized chunk at a time)
 //                                                 +--> BARRIER -> FETCH  (barrier: wait for
 //                                                 |                       every launched core)
 //                                                 +--> IDLE         (ecall, or a fault)
@@ -113,7 +116,8 @@ module accel_core
   //===========================================================================
   typedef enum logic [3:0] {
     S_IDLE, S_FETCH, S_FETCH_WAIT, S_EXEC, S_MEM, S_MEM_WAIT, S_VRED,
-    S_MROW, S_MROW_WAIT, S_MXU_WAIT, S_BARRIER, S_VWAIT
+    S_MROW, S_MROW_WAIT, S_MXU_WAIT, S_BARRIER, S_VWAIT,
+    S_HCPY_RD, S_HCPY_RD_WAIT, S_HCPY_WR, S_HCPY_WR_WAIT
   } state_e;
 
   state_e          state;
@@ -137,7 +141,7 @@ module accel_core
   logic [2:0]  funct3;
   logic [4:0]  rd, rs1, rs2;
   logic [31:0] imm_i, imm_s, imm_b, imm_u, imm_j;
-  logic [31:0] rs1v, rs2v;
+  logic [31:0] rs1v, rs2v, rdv;          // rdv: rd read as a source (hcpy)
 
   assign opcode = insn[6:0];
   assign rd     = insn[11:7];
@@ -154,6 +158,7 @@ module accel_core
 
   assign rs1v = xreg[rs1];          // xreg[0] stays 0
   assign rs2v = xreg[rs2];
+  assign rdv  = xreg[rd];
 
   //===========================================================================
   // Memory instructions: address, size, alignment
@@ -302,7 +307,7 @@ module accel_core
   logic            ex_vl_we;
   logic [VL_W-1:0] ex_vl_val;
   logic            ex_vpu_ar, ex_vpu_sx, ex_vred;
-  logic            ex_mrow, ex_mzero, ex_mmacc, ex_barrier;
+  logic            ex_mrow, ex_mzero, ex_mmacc, ex_barrier, ex_hcpy;
 
   logic [31:0]     alu_b, alu_out;
   logic            br_taken;
@@ -352,6 +357,7 @@ module accel_core
     ex_mzero   = 1'b0;
     ex_mmacc   = 1'b0;
     ex_barrier = 1'b0;
+    ex_hcpy    = 1'b0;
 
     unique case (opcode)
       OPC_LUI:   begin ex_next = 1'b1; ex_rd_we = 1'b1; ex_rd_val = imm_u;      end
@@ -514,7 +520,13 @@ module accel_core
       // ---- multi-core control ----
       OPC_CTRL: begin
         if (insn == INSN_BARRIER) ex_barrier = 1'b1;
-        else                      ex_fault   = 1'b1;
+        else if (funct3 == CTRL_F3_HCPY && funct7 == 7'h00) begin
+          // hcpy x[rd] <- x[rs1], x[rs2] halfwords
+          if (rdv[0] || rs1v[0]) begin ex_fault = 1'b1; ex_cause = ERR_MISALIGNED; end
+          else if (rs2v == 32'd0) ex_next = 1'b1;      // nothing to copy
+          else                    ex_hcpy = 1'b1;
+        end
+        else ex_fault = 1'b1;
       end
 
       default: ex_fault = 1'b1;
@@ -567,6 +579,48 @@ module accel_core
   logic [OFF_W-1:0] moff;
   assign moff = maddr[OFF_W-1:0];
 
+  //---------------------------------------------------------------------------
+  // hcpy: copy a run of halfwords, one chunk per write
+  //---------------------------------------------------------------------------
+  // A chunk is as many bytes as fit before the source OR the destination
+  // reaches the end of its beat (or the run ends), so a chunk is always
+  // inside one source beat and one destination beat:
+  //   HCPY_RD : read the beat holding cp_src            -> cp_beat
+  //   HCPY_WR : rotate the chunk to its destination offset, write it with
+  //             byte strobes for just those bytes; src, dst += chunk
+  // If the chunk ended because of the destination beat, the next chunk is
+  // still in cp_beat, so the read is skipped.
+  localparam int CNT_W  = OFF_W + 1;              // holds 0 .. BYTES
+  localparam int ONES_W = BYTES + 1;
+
+  logic [31:0]           cp_src, cp_dst;
+  logic [32:0]           cp_left;                 // bytes still to copy
+  logic [HBM_DATA_W-1:0] cp_beat;                 // the source beat
+  logic [OFF_W-1:0]      cp_soff, cp_doff, cp_rot;
+  logic [CNT_W-1:0]      cp_room_s, cp_room_d, cp_chunk;
+  logic                  cp_same_src;             // next chunk still in cp_beat
+  logic [ONES_W-1:0]     cp_ones;
+  logic [HBM_DATA_W-1:0] cp_wdata;
+  logic [BYTES-1:0]      cp_wstrb;
+  logic [2*HBM_DATA_W-1:0] cp_dbl;
+
+  always_comb begin
+    cp_soff   = cp_src[OFF_W-1:0];
+    cp_doff   = cp_dst[OFF_W-1:0];
+    cp_room_s = CNT_W'(BYTES) - CNT_W'(cp_soff);
+    cp_room_d = CNT_W'(BYTES) - CNT_W'(cp_doff);
+    cp_chunk  = (cp_room_s < cp_room_d) ? cp_room_s : cp_room_d;
+    if (cp_left < 33'(cp_chunk)) cp_chunk = CNT_W'(cp_left);
+    cp_same_src = (cp_chunk < cp_room_s);
+    // rotate the beat left by (doff - soff) bytes: source byte soff+k lands
+    // on destination byte doff+k
+    cp_rot   = cp_doff - cp_soff;
+    cp_dbl   = {cp_beat, cp_beat} << {cp_rot, 3'b000};
+    cp_wdata = cp_dbl[2*HBM_DATA_W-1 -: HBM_DATA_W];
+    cp_ones  = (ONES_W'(1) << cp_chunk) - ONES_W'(1);
+    cp_wstrb = cp_ones[BYTES-1:0] << cp_doff;
+  end
+
   // Who uses the memory port: FETCH (pc), MEM (load/store) or MROW (tile row)
   always_comb begin
     mem_req_valid = 1'b0;
@@ -585,6 +639,17 @@ module accel_core
         mem_req_addr  = ls_addr;
         mem_req_wdata = ls_data << {ls_off, 3'b000};
         mem_req_wstrb = ls_mask << ls_off;
+      end
+      S_HCPY_RD: begin
+        mem_req_valid = 1'b1;
+        mem_req_addr  = cp_src;
+      end
+      S_HCPY_WR: begin
+        mem_req_valid = 1'b1;
+        mem_req_write = 1'b1;
+        mem_req_addr  = cp_dst;
+        mem_req_wdata = cp_wdata;
+        mem_req_wstrb = cp_wstrb;
       end
       S_MROW: begin
         mem_req_valid = 1'b1;
@@ -663,7 +728,8 @@ module accel_core
           stop_insn = insn;
         end
       end
-      S_MEM_WAIT, S_MROW_WAIT: if (mem_resp_valid && mem_resp_err) begin
+      S_MEM_WAIT, S_MROW_WAIT, S_HCPY_RD_WAIT, S_HCPY_WR_WAIT:
+        if (mem_resp_valid && mem_resp_err) begin
         stop_now = 1'b1; stop_cause = ERR_BUS; stop_insn = insn;
       end
       default: ;
@@ -690,6 +756,10 @@ module accel_core
       ls_write    <= 1'b0;
       ls_data     <= '0;
       ls_mask     <= '0;
+      cp_src      <= '0;
+      cp_dst      <= '0;
+      cp_left     <= '0;
+      cp_beat     <= '0;
       for (int i = 0; i < 32; i++) xreg[i] <= '0;
     end else begin
       end_valid <= 1'b0;                          // pulse
@@ -755,6 +825,12 @@ module accel_core
             state <= S_MXU_WAIT;                    // MXU array started
           else if (ex_barrier)
             state <= S_BARRIER;
+          else if (ex_hcpy) begin
+            cp_src  <= rs1v;
+            cp_dst  <= rdv;
+            cp_left <= {rs2v, 1'b0};                // halfwords -> bytes
+            state   <= S_HCPY_RD;
+          end
           else if (ex_vpu_ar)
             state <= S_VWAIT;                       // VPU op started
           else begin                                // ex_next
@@ -821,6 +897,32 @@ module accel_core
             pc          <= pc + 32'd4;
             instret_cnt <= instret_cnt + 64'd1;
             state       <= S_FETCH;
+          end
+        end
+
+        // ---- hcpy: read a source beat, write chunks of it ----
+        S_HCPY_RD: if (mem_req_ready) state <= S_HCPY_RD_WAIT;
+
+        S_HCPY_RD_WAIT: begin
+          if (mem_resp_valid) begin
+            cp_beat <= mem_resp_rdata;
+            state   <= S_HCPY_WR;
+          end
+        end
+
+        S_HCPY_WR: if (mem_req_ready) state <= S_HCPY_WR_WAIT;
+
+        S_HCPY_WR_WAIT: begin
+          if (mem_resp_valid) begin
+            cp_src  <= cp_src + 32'(cp_chunk);
+            cp_dst  <= cp_dst + 32'(cp_chunk);
+            cp_left <= cp_left - 33'(cp_chunk);
+            if (cp_left == 33'(cp_chunk)) begin     // that was the last chunk
+              pc          <= pc + 32'd4;
+              instret_cnt <= instret_cnt + 64'd1;
+              state       <= S_FETCH;
+            end
+            else state <= cp_same_src ? S_HCPY_WR : S_HCPY_RD;
           end
         end
 

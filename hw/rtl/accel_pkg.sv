@@ -37,6 +37,9 @@ package accel_pkg;
   // ---- OPC_CTRL ---------------------------------------------------------------
   // barrier: wait until every launched core has reached a barrier (or halted)
   localparam logic [31:0] INSN_BARRIER = 32'h0000_007B;
+  // hcpy rd, rs1, rs2 (R-type, funct3 = 1, funct7 = 0): copy x[rs2] bf16
+  // elements (halfwords) from address x[rs1] to address x[rd]
+  localparam logic [2:0]  CTRL_F3_HCPY = 3'd1;
 
   // ---- OPC_VARITH: R-type, funct7 = operation, funct3 = operand form -------
   //   .vv : vd = vs2 OP vs1

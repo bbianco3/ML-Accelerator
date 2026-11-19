@@ -10,8 +10,8 @@
 // conv_layer works on "bands" of two output rows, so the 2x2 max pool can run
 // right after them, and a band of the conv output fits in the scratchpad:
 //   1. im2col: for MAT_DIM output pixels at a time, copy each pixel's
-//      K x K x Cin input window into one row of the patch tile (scalar
-//      lhu/sh -- the slowest part, see the cycle breakdown the host prints),
+//      K x K x Cin input window into one row of the patch tile (one hcpy
+//      per run of K*Cin contiguous elements),
 //   2. GEMM:   band tile = patch tile x weights on the matrix unit,
 //   3. bias + ReLU with the vector unit, then 2x2 max pool (scalar; values
 //      are >= +0 after ReLU, so comparing bf16 bit patterns as unsigned
@@ -225,15 +225,10 @@ conv_layer:
   mv    t3, a5
   mv    t4, t0
 .Lky:
-  lw    t5, C_RUN(a0)
-  mv    t6, t3
-.Lcopy:
-  lhu   gp, 0(t6)
-  sh    gp, 0(t4)
-  addi  t6, t6, 2
-  addi  t4, t4, 2
-  addi  t5, t5, -1
-  bnez  t5, .Lcopy
+  lw    t5, C_RUN(a0)             // run of K*Cin elements
+  hcpy  t4, t3, t5                // input window row -> patch row
+  slli  t5, t5, 1
+  add   t4, t4, t5                // patch row pointer past the run
   lw    t5, C_INROW(a0)
   add   t3, t3, t5
   addi  t2, t2, -1
