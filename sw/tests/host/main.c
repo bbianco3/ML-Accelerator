@@ -68,10 +68,13 @@ int main(void) {
   printf("1/3 = %f, 2^40 = %lu\n", 1.0 / 3.0, 1ul << 40);
 
   // ---- tolerance check of check.h (limits come from competition.json) ----
-  CHECK(bf16_close(0x3F80, 0x3F80) && bf16_close(0x3F81, 0x3F80));   // 1.0 vs 1.0078
-  CHECK(!bf16_close(0x3FA0, 0x3F80) && !bf16_close(0xBF80, 0x3F80)); // 1.25, -1.0 vs 1.0
-  CHECK(bf16_close(0x7FC0, 0x7FC1) && !bf16_close(0x7FC0, 0x3F80));  // NaN only matches NaN
-  CHECK(bf16_close(0x7F80, 0x7F80) && !bf16_close(0x7F80, 0x7F7F) && !bf16_close(0x7F80, 0xFF80));
+  const bf16_t one = f32_to_bf16(1.0f), nan = f32_to_bf16(f32_from_bits(F32_QNAN)),
+               inf = f32_to_bf16(f32_from_bits(0x7F800000u));
+  CHECK(bf16_close(one, one) && bf16_close(f32_to_bf16(1.0078125f), one));
+  CHECK(!bf16_close(f32_to_bf16(1.25f), one) && !bf16_close(f32_to_bf16(-1.0f), one));
+  CHECK(bf16_close(nan, nan | 0x8000) && !bf16_close(nan, one));     // NaN only matches NaN
+  if (!bf16_is_nan(inf))                                            // inf: only the same inf
+    CHECK(bf16_close(inf, inf) && !bf16_close(inf, inf - 1) && !bf16_close(inf, inf | 0x8000));
 
   // ---- region of interest: timed host with a cache model ----
   volatile uint32_t *roi = (volatile uint32_t *)SIMCTRL_ROI;

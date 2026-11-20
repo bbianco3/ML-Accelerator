@@ -1,7 +1,11 @@
 # Hardware parameters
 
-All parameters are on `accel_top` (and forwarded to the sub-modules). In the
-flows they are make variables: `make run VLEN=512`, `make synth MXU_ROWS=16`.
+These are the hardware parameters of the reference design. The shell
+declares all of them on `accel_top` and the Makefile passes them down; in
+your design, use them, give them the meaning that fits, or add your own.
+(The clock period, area target and synthesis settings are not hardware
+parameters: they are in `competition.json`, see
+[competition.md](competition.md).) In the flows they are make variables: `make run VLEN=512`, `make synth MXU_ROWS=16`.
 Illegal values stop elaboration with a `$fatal` explaining the rule (in
 simulation; DC trusts you).
 
@@ -84,7 +88,7 @@ The simulation and synthesis flows also take:
 | `ICACHE_LINES` | `ICACHE_LINES x HBM_DATA_W` | -- | fewer instruction misses in big loops |
 | `SPAD_KB` | none: SRAM macros, `SPAD_KB x 8 Kbit` | address router, byte shifter | tiles re-read from the scratchpad in 2 cycles/row instead of ~45 |
 | `FP_PIPE` | 64 (stage 1) + 32 (stage 2) flops per VPU lane, 32 per MXU MAC unit | shorter FP paths | higher clock, +1/+2 cycles per op |
-| `NUM_VPUS`, `NUM_MXUS` | the unit's registers x count | the unit's datapath x count | parallel vector / tensor work only on cores that have the unit |
+| `NUM_VPUS`, `NUM_MXUS` | the unit's registers x count | the unit's datapath x count | parallel vector / matrix work only on cores that have the unit |
 | `NUM_CORES` | everything above x `NUM_CORES` | everything above x `NUM_CORES`, plus the AXI arbiter | up to `NUM_CORES` x on parallel work, until HBM bandwidth runs out |
 
 At the defaults one core holds about 8 Kbit of vector registers, 16 Kbit of

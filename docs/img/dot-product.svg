@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="380" viewBox="0 0 860 380" font-family="Helvetica, Arial, sans-serif">
+<title>Dot-product engine</title>
+<defs>
+  <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+    <path d="M0,0 L10,5 L0,10 z" fill="#2f3b4a"/>
+  </marker>
+  <marker id="as" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+    <path d="M10,0 L0,5 L10,10 z" fill="#2f3b4a"/>
+  </marker>
+</defs>
+<rect x="0" y="0" width="860" height="380" rx="10" fill="#ffffff"/>
+<rect x="30" y="25" width="120" height="30" rx="6" fill="#e3eefc" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="90.0" y="44.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">A[i][0]  B[0][j]</text>
+<path d="M90,55 L90,90" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<circle cx="90" cy="105" r="15" fill="#d4e4fa" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="90" y="110.5" font-size="17" text-anchor="middle" font-weight="bold" fill="#1f2933">×</text>
+<rect x="170" y="25" width="120" height="30" rx="6" fill="#e3eefc" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="230.0" y="44.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">A[i][1]  B[1][j]</text>
+<path d="M230,55 L230,90" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<circle cx="230" cy="105" r="15" fill="#d4e4fa" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="230" y="110.5" font-size="17" text-anchor="middle" font-weight="bold" fill="#1f2933">×</text>
+<rect x="310" y="25" width="120" height="30" rx="6" fill="#e3eefc" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="370.0" y="44.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">A[i][2]  B[2][j]</text>
+<path d="M370,55 L370,90" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<circle cx="370" cy="105" r="15" fill="#d4e4fa" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="370" y="110.5" font-size="17" text-anchor="middle" font-weight="bold" fill="#1f2933">×</text>
+<rect x="450" y="25" width="120" height="30" rx="6" fill="#e3eefc" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="510.0" y="44.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">A[i][3]  B[3][j]</text>
+<path d="M510,55 L510,90" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<circle cx="510" cy="105" r="15" fill="#d4e4fa" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="510" y="110.5" font-size="17" text-anchor="middle" font-weight="bold" fill="#1f2933">×</text>
+<path d="M90,120 L90,150 L148,165" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<path d="M230,120 L230,150 L172,165" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<circle cx="160" cy="178" r="15" fill="#d4e4fa" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="160" y="183.5" font-size="17" text-anchor="middle" font-weight="bold" fill="#1f2933">+</text>
+<path d="M370,120 L370,150 L428,165" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<path d="M510,120 L510,150 L452,165" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<circle cx="440" cy="178" r="15" fill="#d4e4fa" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="440" y="183.5" font-size="17" text-anchor="middle" font-weight="bold" fill="#1f2933">+</text>
+<path d="M160,193 L160,225 L288,240" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<path d="M440,193 L440,225 L312,240" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<circle cx="300" cy="252" r="15" fill="#d4e4fa" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="300" y="257.5" font-size="17" text-anchor="middle" font-weight="bold" fill="#1f2933">+</text>
+<path d="M300,267 L300,300" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<circle cx="300" cy="315" r="15" fill="#d4e4fa" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="300" y="320.5" font-size="17" text-anchor="middle" font-weight="bold" fill="#1f2933">+</text>
+<rect x="380" y="297" width="120" height="36" rx="6" fill="#e3f3e6" stroke="#3a8a4a" stroke-width="1.4"/>
+<text x="440.0" y="319.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">C[i][j]</text>
+<path d="M380,315 L315,315" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<path d="M300,330 L300,360 L440,360 L440,333" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<path d="M30,140 L570,140" fill="none" stroke="#b87a1e" stroke-width="1.2" stroke-dasharray="6 4"/>
+<path d="M30,212 L570,212" fill="none" stroke="#b87a1e" stroke-width="1.2" stroke-dasharray="6 4"/>
+<text x="580" y="144" font-size="11" text-anchor="start" font-weight="normal" fill="#b87a1e">pipeline register (optional)</text>
+<text x="580" y="216" font-size="11" text-anchor="start" font-weight="normal" fill="#b87a1e">pipeline register (optional)</text>
+<text x="580" y="230" font-size="11" text-anchor="start" font-weight="normal" fill="#b87a1e">no feedback in the tree: add as many as you like</text>
+<text x="580" y="109" font-size="12" text-anchor="start" font-weight="normal" fill="#5a6472">T multipliers (T = 4 here)</text>
+<text x="580" y="182" font-size="12" text-anchor="start" font-weight="normal" fill="#5a6472">adder tree: log2(T) levels</text>
+<text x="580" y="319" font-size="12" text-anchor="start" font-weight="normal" fill="#5a6472">C[i][j] = C[i][j] + dot</text>
+</svg>

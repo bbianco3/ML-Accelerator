@@ -9,6 +9,10 @@
 #   PDK             asap7 (default) | freepdk45 -> sources pdk/<PDK>.tcl
 #                   (ASAP7_DIR/ASAP7_CORNER/ASAP7_VT or STD_CELL_LIB, see there)
 #   CLK_PERIOD      clock period in ns, whatever the library unit (default 2.5)
+#   MAX_AREA_UM2    area target for set_max_area (0 = as small as possible)
+#   SYNTH_TIME_LIMIT_MIN, SYNTH_EXTRA_PASSES, SYNTH_RETIME, SYNTH_CLOCK_GATING,
+#   SYNTH_MAX_FANOUT, SYNTH_BUFFER_PORTS
+#                   synthesis settings, see docs/synthesis.md
 #   VLEN MAT_DIM NUM_TREGS NUM_ACCS MXU_ROWS HBM_DATA_W ICACHE_LINES
 #   NUM_CORES SPAD_KB NUM_VPUS NUM_MXUS FP_PIPE
 #                   RTL parameters                           (RTL defaults)
@@ -30,6 +34,17 @@ set pdk        [env_or PDK asap7]
 set clk_ns     [env_or CLK_PERIOD 2.5]
 set elab_only  [env_or SYNTH_ELAB_ONLY 0]
 set sram_mode  [env_or SRAM macro]
+
+# Synthesis settings (competition.json "design" / "synth", or make variables)
+set max_area       [env_or MAX_AREA_UM2 0]          ;# area target in um^2, 0 = as small as possible
+set time_limit_min [env_or SYNTH_TIME_LIMIT_MIN 0]  ;# 0 = no limit
+set extra_passes   [env_or SYNTH_EXTRA_PASSES 0]    ;# incremental compiles while timing is violated
+set opt_retime     [env_or SYNTH_RETIME 0]          ;# move registers across logic to balance stages
+set opt_gating     [env_or SYNTH_CLOCK_GATING 0]    ;# insert clock gates on enabled registers
+set max_fanout     [env_or SYNTH_MAX_FANOUT 0]      ;# buffer nets with more loads than this, 0 = off
+set buffer_ports   [env_or SYNTH_BUFFER_PORTS 0]    ;# buffer feedthroughs / multiply-driven ports
+set t_start        [clock seconds]
+proc elapsed_min {} { return [expr {([clock seconds] - $::t_start) / 60.0}] }
 
 # RTL parameters (only the ones that are set are passed to elaborate)
 set param_list {}
@@ -136,6 +151,8 @@ if {$pdk_driving_cell ne ""} {
 }
 
 foreach pat $pdk_dont_use {
+  # clock gating needs the integrated clock-gating cells
+  if {$opt_gating && [string match "*ICG*" $pat]} { continue }
   set cells [get_lib_cells -quiet $pat]
   if {[sizeof_collection $cells] > 0} { set_dont_use $cells }
 }
@@ -144,34 +161,84 @@ foreach pat $pdk_dont_use {
 # physical design build the tree.
 set_ideal_network [get_ports rst_n]
 
+# ---- area target and buffering ----
+# Area: after timing is met DC recovers area until the design is below the
+# target (0 = keep going as far as it can).
+set_max_area $max_area
+# Buffering. DC always sizes and buffers for timing; these add design rules
+# that force buffer trees on high-fanout nets and isolate ports.
+if {$max_fanout > 0} { set_max_fanout $max_fanout [current_design] }
+if {$buffer_ports}   { set_fix_multiple_port_nets -all -buffer_constants }
+
 write_sdc accel_top.sdc
+
+# What this run was asked to do (read by tools/competition.py)
+set fh [open reports/settings.rpt w]
+puts $fh "clk_period_ns=$clk_ns"
+puts $fh "max_area_um2=$max_area"
+puts $fh "time_limit_min=$time_limit_min extra_passes=$extra_passes retime=$opt_retime\
+ clock_gating=$opt_gating max_fanout=$max_fanout buffer_ports=$buffer_ports"
+close $fh
+
+#------------------------------------------------------------------------------
+# Reports and outputs (written after every pass, so that a run that is stopped
+# by the time limit still leaves the results of the last finished pass)
+#------------------------------------------------------------------------------
+proc write_results {sram_mode gating} {
+  report_qor                                  > reports/qor.rpt
+  report_area -hierarchy                      > reports/area.rpt
+  report_timing -max_paths 10 -nworst 1       > reports/timing.rpt
+  report_constraint -all_violators            > reports/violators.rpt
+  report_power -hierarchy                     > reports/power.rpt
+  report_reference -hierarchy                 > reports/reference.rpt
+  if {$gating} { report_clock_gating          > reports/clock_gating.rpt }
+  # Every SRAM macro instance with its area (empty with SRAM=flops)
+  set sram_cells [get_cells -quiet -hierarchical -filter "ref_name =~ sram1rw_*"]
+  if {[sizeof_collection $sram_cells] > 0} {
+    report_cell -nosplit $sram_cells          > reports/sram.rpt
+  } else {
+    echo "No SRAM macros (SRAM=$sram_mode)"  > reports/sram.rpt
+  }
+  check_design                                > reports/check_design_post.rpt
+  write -format ddc     -hierarchy -output accel_top.ddc
+  write -format verilog -hierarchy -output accel_top.v
+}
+
+proc worst_slack {} {
+  set p [get_timing_paths -max_paths 1]
+  if {[sizeof_collection $p] == 0} { return 0.0 }
+  return [get_attribute $p slack]
+}
 
 #------------------------------------------------------------------------------
 # Compile
 #------------------------------------------------------------------------------
-compile_ultra -no_autoungroup
+set compile_opts {-no_autoungroup}
+if {$opt_retime} { lappend compile_opts -retime }
+if {$opt_gating} { lappend compile_opts -gate_clock }
 
-#------------------------------------------------------------------------------
-# Reports and outputs
-#------------------------------------------------------------------------------
-report_qor                                  > reports/qor.rpt
-report_area -hierarchy                      > reports/area.rpt
-report_timing -max_paths 10 -nworst 1       > reports/timing.rpt
-report_constraint -all_violators            > reports/violators.rpt
-report_power -hierarchy                     > reports/power.rpt
-report_reference -hierarchy                 > reports/reference.rpt
-# Every SRAM macro instance with its area (empty with SRAM=flops)
-set sram_cells [get_cells -quiet -hierarchical -filter "ref_name =~ sram1rw_*"]
-if {[sizeof_collection $sram_cells] > 0} {
-  report_cell -nosplit $sram_cells          > reports/sram.rpt
-} else {
-  echo "No SRAM macros (SRAM=$sram_mode)"  > reports/sram.rpt
+puts "INFO: compile_ultra $compile_opts"
+eval compile_ultra $compile_opts
+write_results $sram_mode $opt_gating
+puts [format "INFO: first compile done after %.1f min, worst slack %s" [elapsed_min] [worst_slack]]
+
+# Extra passes: only while timing is violated and there is time left.
+for {set pass 1} {$pass <= $extra_passes} {incr pass} {
+  if {[worst_slack] >= 0} {
+    puts "INFO: timing is met, no extra pass needed"
+    break
+  }
+  if {$time_limit_min > 0 && [elapsed_min] >= $time_limit_min} {
+    puts [format "INFO: time limit of %s min reached after %.1f min, skipping extra pass %d" \
+            $time_limit_min [elapsed_min] $pass]
+    break
+  }
+  puts "INFO: extra pass $pass of $extra_passes: compile_ultra -incremental $compile_opts"
+  eval compile_ultra -incremental $compile_opts
+  write_results $sram_mode $opt_gating
+  puts [format "INFO: extra pass %d done after %.1f min, worst slack %s" $pass [elapsed_min] [worst_slack]]
 }
-check_design                                > reports/check_design_post.rpt
 
-write -format ddc     -hierarchy -output accel_top.ddc
-write -format verilog -hierarchy -output accel_top.v
-
-puts "INFO: synthesis finished. Worst slack:"
+puts [format "INFO: synthesis finished after %.1f min. Worst slack:" [elapsed_min]]
 report_timing -max_paths 1 -nworst 1 -significant_digits 3
 exit

@@ -13,9 +13,12 @@ WAVES    ?= 0
 SIM_ARGS ?=
 # From competition.json (top-level Makefile): CLK_PERIOD, the real duration
 # of one accelerator clock (the same value synthesis targets, so that host
-# time and accelerator time line up), and LINK_DELAY_NS, the one-way latency
-# of the host <-> accelerator link (register accesses, irq).
-PLATFORM_ARGS = +clk_period_ns=$(CLK_PERIOD) +link_delay_ns=$(LINK_DELAY_NS)
+# time and accelerator time line up); LINK_DELAY_NS, the one-way latency of
+# the host <-> accelerator link (register accesses, irq); and the HBM
+# latencies. The platform's delays are in nanoseconds, so a faster
+# accelerator clock does not make the host link or the memory any faster.
+PLATFORM_ARGS = +clk_period_ns=$(CLK_PERIOD) +link_delay_ns=$(LINK_DELAY_NS) \
+                +hbm_rd_latency_ns=$(HBM_RD_LATENCY_NS) +hbm_wr_latency_ns=$(HBM_WR_LATENCY_NS)
 # behav: SRAMs are behavioral arrays.  macro: build the scratchpads out of the
 # generated ASAP7 macro models exactly as synthesis does (needs python3).
 SIM_SRAM ?= behav
@@ -23,7 +26,7 @@ SIM_SRAM ?= behav
 SIM_CFG  := $(HW_CFG)$(if $(filter macro,$(SIM_SRAM)),_sram)$(if $(filter 1,$(WAVES)),_waves)
 SIM_DIR  := $(BUILD)/sim/$(SIM_CFG)
 SIMV     := $(SIM_DIR)/simv
-RUN_CFG  := $(HW_CFG)$(if $(filter macro,$(SIM_SRAM)),_sram)
+RUN_CFG  := $(HW_CFG)$(if $(filter macro,$(SIM_SRAM)),_sram)$(NUMFMT_SFX)
 RUN_DIR   = $(BUILD)/runs/$(RUN_CFG)/$(TEST)
 
 # RTL_DIR is set in the top-level Makefile (default hw/rtl)

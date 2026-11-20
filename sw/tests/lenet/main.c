@@ -140,9 +140,9 @@ static void pack_conv(struct conv_geom *g, const bf16_t *w, const bf16_t *b, uin
       for (int ky = 0; ky < s->k; ky++)
         for (int kx = 0; kx < s->k; kx++) {
           uint32_t kk = (uint32_t)((ky * s->k + kx) * s->cin + ci);
-          g->params[kk * g->cout_pad + (uint32_t)co] = w[((co * s->cin + ci) * s->k + ky) * s->k + kx];
+          g->params[kk * g->cout_pad + (uint32_t)co] = bf16_import(w[((co * s->cin + ci) * s->k + ky) * s->k + kx]);
         }
-    g->params[g->kd_pad * g->cout_pad + (uint32_t)co] = b[co];
+    g->params[g->kd_pad * g->cout_pad + (uint32_t)co] = bf16_import(b[co]);
   }
 }
 
@@ -162,9 +162,9 @@ static void pack_fc(struct fc_geom *g, int l, uint32_t k_pad, const bf16_t *w, c
         int c = k % 16, yx = k / 16;
         src = c * 25 + yx;
       }
-      g->w[(uint32_t)k * g->n_pad + (uint32_t)n] = w[n * FC_K[l] + src];
+      g->w[(uint32_t)k * g->n_pad + (uint32_t)n] = bf16_import(w[n * FC_K[l] + src]);
     }
-    g->bias[n] = b[n];
+    g->bias[n] = bf16_import(b[n]);
   }
 }
 
@@ -362,15 +362,24 @@ int main(void) {
   // ---- 4. run on all cores ----
   // Region of interest = the inference itself (not weight packing or checking).
   uint32_t args[] = {(uint32_t)(uintptr_t)desc};
+  // The host only waits here. Polling STATUS (the default) keeps the host CPU
+  // busy; build with SW_CFLAGS="-O2 -g -DLENET_WAIT_IRQ" to sleep until the
+  // interrupt instead and compare the host energy (docs/software-optimization.md).
   roi_begin();
-  uint32_t st = accel_run_cores(lenet_kernel, args, 1, NC);
+  accel_launch_cores(lenet_kernel, args, 1, NC);
+#ifdef LENET_WAIT_IRQ
+  uint32_t st = accel_wait_irq();
+#else
+  uint32_t st = accel_wait();
+#endif
   roi_end();
+  if (st & ACCEL_STATUS_ERROR) accel_report_error(st);
   if (st & ACCEL_STATUS_ERROR) return 1;
   uint32_t cyc = (uint32_t)accel_cycles();
 
   // ---- check: logits within tolerance of the reference, and the digits ----
   float max_err = 0.0f;
-  int errors = 0, correct = 0;
+  int errors = 0, correct = 0, ref_correct = 0;
   static bf16_t x_in[1024], p1[14 * 14 * 6], h[4][512];
   printf("image : label predicted\n");
   for (uint32_t i = 0; i < n_img; i++) {
@@ -382,8 +391,9 @@ int main(void) {
     ref_fc(&fg[1], 1, h[1], h[2]);
     ref_fc(&fg[2], 2, h[2], h[3]);
     const bf16_t *got = &logits[i * fg[2].n_pad];
-    int best = 0;
+    int best = 0, ref_best = 0;
     for (int n = 0; n < 10; n++) {
+      if (bf16_to_f32(h[3][n]) > bf16_to_f32(h[3][ref_best])) ref_best = n;
       check_track(&max_err, got[n], h[3][n]);
       if (!bf16_close(got[n], h[3][n])) {
         if (errors < 10) printf("  image %u logit %d: got 0x%04x expected 0x%04x\n", i, n, got[n], h[3][n]);
@@ -392,6 +402,7 @@ int main(void) {
       if (bf16_to_f32(got[n]) > bf16_to_f32(got[best])) best = n;
     }
     correct += (best == b.label[i]);
+    ref_correct += (ref_best == b.label[i]);
     printf("  %2u  :   %u     %d %s\n", i, b.label[i], best, best == b.label[i] ? "" : "<-- wrong");
   }
   printf("logits vs. reference model: %s (largest difference %f); %d of %u digits correct\n",
@@ -407,7 +418,7 @@ int main(void) {
   printf("core 0 time: im2col %u%%, conv GEMM %u%%, bias/ReLU/pool %u%%, fully connected %u%%\n",
          s[0] * 100 / tot, s[1] * 100 / tot, s[2] * 100 / tot, s[3] * 100 / tot);
 
-  if (correct != (int)n_img) errors++;      // the exported images are all classified correctly
+  if (correct < ref_correct) errors++;      // as many digits right as the reference model (in bf16: all)
   printf("lenet: %d errors\n", errors);
   return errors ? 1 : 0;
 }

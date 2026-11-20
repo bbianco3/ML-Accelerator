@@ -32,7 +32,16 @@ else
   # no SRAM macros for other PDKs (see docs/sram.md)
   override SRAM := flops
 endif
-SYN_DIR := $(BUILD)/synth/$(PDK_TAG)/$(HW_CFG)$(if $(filter flops,$(SRAM)),_flops)_$(CLK_PERIOD)ns
+# SYNTH_TAG=<name> keeps runs with different synthesis settings apart.
+SYNTH_TAG ?=
+SYN_DIR := $(BUILD)/synth/$(PDK_TAG)/$(HW_CFG)$(if $(filter flops,$(SRAM)),_flops)_$(CLK_PERIOD)ns$(if $(SYNTH_TAG),_$(SYNTH_TAG))
+
+# Hard stop for dc_shell: the time limit plus a grace period for the reports
+# (0 = no limit). The script itself stops starting new optimization passes
+# once the limit is reached, see synthesis.tcl.
+SYNTH_KILL_MIN = $(shell echo $$(( $(SYNTH_TIME_LIMIT_MIN) + 20 )))
+# (/usr/bin/timeout by full path: the Synopsys module puts a different "timeout" on PATH.)
+SYNTH_WATCHDOG = $(if $(filter-out 0,$(SYNTH_TIME_LIMIT_MIN)),/usr/bin/timeout --foreground -k 60 $(SYNTH_KILL_MIN)m)
 
 .PHONY: synth asap7 sram limits score
 synth: $(PDK_DEP) $(GEN_SRCS)
@@ -45,11 +54,20 @@ synth: $(PDK_DEP) $(GEN_SRCS)
 	  MXU_ROWS=$(MXU_ROWS) HBM_DATA_W=$(HBM_DATA_W) ICACHE_LINES=$(ICACHE_LINES) \
 	  NUM_CORES=$(NUM_CORES) SPAD_KB=$(SPAD_KB) \
 	  NUM_VPUS=$(NUM_VPUS) NUM_MXUS=$(NUM_MXUS) FP_PIPE=$(FP_PIPE) \
-	  $(DC_SHELL) -f $(REPO)/hw/synth/synthesis.tcl 2>&1 | tee synth.log
+	  MAX_AREA_UM2=$(MAX_AREA_UM2) SYNTH_TIME_LIMIT_MIN=$(SYNTH_TIME_LIMIT_MIN) \
+	  SYNTH_EXTRA_PASSES=$(SYNTH_EXTRA_PASSES) SYNTH_RETIME=$(SYNTH_RETIME) \
+	  SYNTH_CLOCK_GATING=$(SYNTH_CLOCK_GATING) SYNTH_MAX_FANOUT=$(SYNTH_MAX_FANOUT) \
+	  SYNTH_BUFFER_PORTS=$(SYNTH_BUFFER_PORTS) \
+	  $(SYNTH_WATCHDOG) $(DC_SHELL) -f $(REPO)/hw/synth/synthesis.tcl 2>&1 | tee synth.log; \
+	  st=$$?; if [ $$st -eq 124 ] || [ $$st -eq 137 ]; then \
+	    echo "ERROR: synthesis hit the hard time limit ($(SYNTH_KILL_MIN) min)." \
+	         "Reports in $(SYN_DIR)/reports are from the last finished pass, if any."; fi; \
+	  exit $$st
 	@echo "Reports are in $(SYN_DIR)/reports/"
 	@python3 $(REPO)/tools/competition.py limits $(SYN_DIR) || true
 
-# Check the synthesis result of this configuration against competition.json.
+# Check the synthesis result of this configuration: timing met at its clock,
+# area within the target.
 limits:
 	@python3 $(REPO)/tools/competition.py limits $(SYN_DIR)
 

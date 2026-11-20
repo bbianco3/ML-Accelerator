@@ -1,8 +1,10 @@
 # Design decisions
 
-Why the template is built the way it is, and what was considered instead.
-Read this before proposing a big architectural change. If you change one of
-these decisions, update this file.
+Why the platform and the reference design are built the way they are, and
+what was considered instead. Decisions 1, 3 and 5 are about the platform
+(fixed). The others describe the reference design: they are the choices you
+are free to make differently, and the alternatives listed are a good place
+to start.
 
 ## 1. Host-accelerator interface: memory-mapped registers, not custom host instructions
 
@@ -62,8 +64,8 @@ co-simulate.
 
 **Why:** it's fast, runs real compiled C (including floating point for
 reference checks), and keeps the RTL under test = only your accelerator.
-Replacing it with an RTL core later (e.g. CVA6 in one of its 32-bit
-configurations, or any core with an AXI port) only requires connecting that
+Replacing it with an RTL core later (e.g. CVA6, or any core with an AXI
+port) only requires connecting that
 core's bus to the same `s_axil` port and HBM.
 The software and register map stay the same.
 
@@ -77,8 +79,8 @@ column-major and tile-blocked formats are all expressed with those two, and
 [memory-formats.md](memory-formats.md).
 
 **Why:** a format is just address arithmetic, so it belongs in software
-where it is cheap to change and easy to test. The `layouts` test proves
-that all 27 format combinations of a GEMM give identical bits. Only genuinely
+where it is cheap to change and easy to test. The `layouts` test runs all
+27 format combinations of a GEMM through one kernel. Only genuinely
 non-strided formats (swizzles, sparsity) need new hardware.
 
 ## 5. Registers in flip-flops, scratchpads in SRAM macros from our own generator
@@ -121,8 +123,9 @@ SRAM does well. Area per bit:
 **Wrapper:** all RTL uses `accel_sram_1rw #(DEPTH, WIDTH)`. In simulation it
 is a behavioral array. In synthesis (and in simulation with
 `SIM_SRAM=macro`) it tiles the memory out of catalog macros (width <= 128,
-depth <= 512, extra banks selected by address). There is one wrapper and
-one catalog, so adding a macro size is a two-file change.
+depth <= 512, extra banks selected by address). The wrapper is generated
+from the same catalog as the macros, so adding a macro size is a one-line
+change.
 
 **Alternatives** still open: OpenRAM macros with FreePDK45 (real layouts,
 `/class/ece411/sram_cache` on EWS); `bsg_fakeram` with a better config;
@@ -138,11 +141,15 @@ registers (a 2-cycle-per-row source for `mld`) instead of replacing them.
 **Decision.** bf16 storage, fp32 compute, RNE, flush subnormals, canonical
 NaN, fixed accumulation order. See [numerics.md](numerics.md).
 
-**Why:** tests can compare with `==` instead of tolerances, so a one-bit
-hardware bug is caught immediately, and the C reference model is short
-enough to read in five minutes.
+**Why:** a one-bit hardware bug is caught immediately, and the C reference
+model is short enough to read in five minutes.
 
-## 7. Deliberately slow reference microarchitecture
+**What a design may relax:** only element-wise vector operations are held
+to this bit for bit. Matrix results are checked within a tolerance
+([numerics.md](numerics.md)), so that matrix engines which add in another
+order or precision (adder trees, fixed-point accumulation) are allowed.
+
+## 7. A deliberately slow reference design
 
 **Decision.** Unpipelined control core, one AXI transaction in flight,
 blocking vector/matrix instructions.
@@ -160,7 +167,7 @@ running the same kernel (SPMD) and sharing HBM. Cores coordinate with
 `barrier` and through HBM.
 
 **Alternative considered.** One control core issuing to several VPUs/MXUs
-asynchronously (like a VLIW or a decoupled TPU core): `mmacc` on MXU 0
+asynchronously (like a VLIW or a decoupled matrix unit): `mmacc` on MXU 0
 returns immediately, the core loads tiles for MXU 1, and so on, with a
 scoreboard tracking which unit owns which registers.
 
@@ -175,8 +182,8 @@ scoreboard tracking which unit owns which registers.
 | Programming model | SPMD with `mhartid`, like GPU threads / Tenstorrent cores | one instruction stream, explicit unit numbers |
 | Cost | the control core, I-cache and arbiter are replicated (small next to the MXU) | cheaper per extra MXU |
 
-For a 3-week student project, the replicated core is the safer choice: the
-existing regression covers each core unchanged, and the new parts (arbiter,
+For a first design, the replicated core is the safer choice: the
+regression covers each core unchanged, and the new parts (arbiter,
 barrier, abort) are small and have their own tests (`multicore`,
 `gemm_tiled`). A decoupled MXU inside each core is listed as a project in
 [architecture.md](architecture.md#where-to-go-from-here); it combines with

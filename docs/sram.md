@@ -1,6 +1,6 @@
 # SRAM macros and the scratchpad
 
-Each compute core has a private scratchpad SRAM (`SPAD_KB` KiB at
+In the reference design each compute core has a private scratchpad SRAM (`SPAD_KB` KiB at
 `0x2000_0000`, see [architecture.md](architecture.md#scratchpad)). This page
 covers how that SRAM is modelled: the generator, the macro catalog, the RTL
 wrapper, and how its area, timing and power reach the synthesis reports.

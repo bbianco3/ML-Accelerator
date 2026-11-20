@@ -45,8 +45,7 @@ typedef struct {
 
 A kernel that takes descriptors works for **every** format and any mix of
 formats. See [`sw/tests/layouts`](../sw/tests/layouts), which runs one GEMM
-kernel over all 27 combinations of A/B/C formats and checks that the results
-are bit-identical.
+kernel over all 27 combinations of A/B/C formats and checks every result.
 
 ## Host API
 
@@ -66,11 +65,11 @@ bf16_t x = mat_get(&A, r, c);              // read back any element
 | Column-major | free transpose (e.g. `B^T` weights, `A^T B` products) | same burst pattern as row-major |
 | Blocked | each tile is **one contiguous `T*T*2`-byte block**: ideal for long bursts, prefetching and DMA | needs a packing step on the host (or a kernel) |
 
-With the reference memory engine (one transaction at a time, one row per
-transaction) all three cost the same, which is what the `layouts` test
-prints. Once the memory engine merges contiguous rows into a single burst,
-or keeps several requests outstanding, blocked tiles load several times
-faster. That makes it a good, measurable student project.
+With the reference design's memory path (one transaction at a time, one
+row per transaction) all three cost the same, which is what the `layouts`
+test prints. Once the memory path merges contiguous rows into a single
+burst, or keeps several requests outstanding, blocked tiles load several
+times faster. That makes it a good, measurable project.
 
 ## Adding a format
 
@@ -78,6 +77,6 @@ Formats that are still "rows with a constant stride" (padded, sub-matrix
 views, batched matrices with a batch stride) need **no hardware change**.
 Add a case to `mat_elem()` and `mat_tile_desc()`. Formats that are not, such
 as swizzled/XOR layouts, packed 2:4 sparsity or bf16 pairs interleaved for
-SIMD, need a new addressing mode in `accel_core.sv` (the `S_MX_ROW` address
-update) plus a new `funct3` value. Document it here and in
+SIMD, need a new addressing mode in the control core (the address update
+between tile rows) plus a new `funct3` value. Document it here and in
 [isa.md](isa.md).

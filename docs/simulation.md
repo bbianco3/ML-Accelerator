@@ -5,15 +5,7 @@ is modelled, what is not, and every knob you can turn.
 
 ## The simulated system
 
-```
-   +-----------------------+ AXI4-Lite + link delay+--------------+  AXI4 (timed)  +-----------+
-   | host_bfm.sv           |---------------------->|  accel_top   |--------------->| hbm_model |
-   |  RV64G ISS (C, DPI)   |<--------- irq --------|  (RTL, DUT)  |                |  .sv      |
-   +-----------+-----------+                       +--------------+                +-----+-----+
-               |                                                                         |
-               |           platform.c: host RAM, HBM bytes, ELF loader, console          |
-               +------------- functional (host side: cache model in the ROI) -------------+
-```
+![The simulated system: host_bfm.sv (host CPU), accel_top (the design under test), hbm_model.sv, and platform.c holding the memories](img/simulation.svg)
 
 | Piece | File | Accuracy |
 |---|---|---|
@@ -26,10 +18,13 @@ is modelled, what is not, and every knob you can turn.
 
 * One clock, drawn with a period of 1 ns (`timescale 1ns/1ps`), so
   **waveform time in ns = cycle number** and `%t` prints cycles.
-* What a cycle is worth in real time is the make variable `CLK_PERIOD` (the
-  synthesis target, default 2.5 ns). It sets how much time the 2 GHz host
-  gets per cycle and how many cycles the host link delay is. Whether your
-  RTL really meets that period is decided by [synthesis](synthesis.md).
+* What a cycle is worth in real time is your clock period: `CLK_PERIOD`,
+  from `design.clk_period_ns` in `competition.json`, the same value
+  synthesis targets. The platform is specified in nanoseconds, so the clock
+  period sets how much the 2 GHz host CPU gets done per cycle and how many
+  cycles the link delay and the HBM latency are. Whether your RTL really
+  meets that period is decided by [synthesis](synthesis.md);
+  [competition.md](competition.md) explains how to choose it.
 * Reset (`rst_n` low) is held for the first 10 cycles.
 * The host ISS, the HBM model and the DUT all advance on the same clock edge.
 
@@ -72,8 +67,8 @@ An AXI4 slave with these properties:
 
 | Property | Value / plusarg |
 |---|---|
-| Read latency (AR handshake to first R beat) | `+hbm_rd_latency=N`, default **40** cycles |
-| Write latency (last W beat to B) | `+hbm_wr_latency=N`, default **20** cycles |
+| Read latency (AR handshake to first R beat) | **100 ns** (`platform.hbm_rd_latency_ns`), converted to cycles with the clock period and rounded up: 40 cycles at 2.5 ns, 80 at 1.25 ns |
+| Write latency (last W beat to B) | **50 ns** (`platform.hbm_wr_latency_ns`): 20 cycles at 2.5 ns |
 | Bandwidth | one `HBM_DATA_W` beat per cycle on R and on W (peak `HBM_DATA_W/8` B/cycle each) |
 | Outstanding requests | `+hbm_max_outstanding=N`, default 8 (reads and writes counted separately), served in order |
 | Random back-pressure | `+hbm_stall_pct=P`: each cycle each ready/valid is dropped with probability P% (default 0) |
@@ -102,8 +97,8 @@ after them, so it wins.
 | `+host_trace` | off | print every host instruction (`[host] pc=... insn=...`) |
 | `+accel_trace` | off | print every accelerator instruction (`[accel] cyc=... pc=... insn=...`) |
 | `+hbm_trace` | off | print every AXI transaction |
-| `+hbm_rd_latency=<n>` | 40 | see HBM model |
-| `+hbm_wr_latency=<n>` | 20 | |
+| `+hbm_rd_latency_ns=<t>`, `+hbm_wr_latency_ns=<t>` | set by make (100, 50) | HBM latency in ns, see HBM model |
+| `+hbm_rd_latency=<n>`, `+hbm_wr_latency=<n>` | from the above | the same in cycles, for experiments; overrides the `_ns` form |
 | `+hbm_max_outstanding=<n>` | 8 | |
 | `+hbm_stall_pct=<0-100>` | 0 | random back-pressure |
 | `+vcd` | off | dump `waves.vcd` (portable, any viewer, large and slow) |
@@ -119,8 +114,8 @@ Decode instruction words in traces with the disassemblies in
 | `VLEN MAT_DIM NUM_TREGS NUM_ACCS MXU_ROWS HBM_DATA_W ICACHE_LINES NUM_CORES SPAD_KB NUM_VPUS NUM_MXUS FP_PIPE` | 256 16 4 2 4 256 16 2 16 `NUM_CORES` `NUM_CORES` 1 | RTL parameters, see [parameters.md](parameters.md) |
 | `SIM_SRAM` | `behav` | `macro`: build the scratchpads out of the generated ASAP7 SRAM macro models, as synthesis does (runs `hw/sram/sram_gen.py` once; [sram.md](sram.md)) |
 | `WAVES` | 0 | 1 = compile with debug access and dump `waves.fsdb` for Verdi |
-| `CLK_PERIOD` | `clk_period_ns` in `competition.json` (2.5) | ns per accelerator cycle, shared with `make synth` ([host-model.md](host-model.md)) |
-| `LINK_DELAY_NS` | `link_delay_ns` in `competition.json` (5) | one-way host link latency |
+| `CLK_PERIOD` | `design.clk_period_ns` in `competition.json` (2.5) | your clock period: ns per accelerator cycle, shared with `make synth` ([competition.md](competition.md)) |
+| `LINK_DELAY_NS`, `HBM_RD_LATENCY_NS`, `HBM_WR_LATENCY_NS` | `platform` section of `competition.json` (5, 100, 50) | fixed platform delays; override only for experiments |
 | `KERNEL_MARCH` | `rv32i_zicsr` | what the assembler accepts in kernels (`sw/sw.mk`) |
 | `SIM_ARGS` | empty | extra plusargs |
 | `UNIT_N` | 200000 | iterations of `make unit` |
@@ -193,8 +188,8 @@ Useful signals (core *i* is `tb_top.dut.g_core[i]`):
 | `spad` | scratchpad: scalar/vector/matrix accesses, partial stores, transposed tile through the scratchpad, address sweep over every bank, out-of-range bus error, speed vs HBM |
 | `units` | cores with different units (`NUM_VPUS`, `NUM_MXUS`): every core does the vector and/or matrix work its units allow in one launch, `CSR_UNITS`, illegal-instruction error on a core without the unit |
 | `multicore` | `mhartid`/`ncores`, barriers with unbalanced cores, parallel vadd, `CORES` clamping, one core faulting stops the others, recovery |
-| `gemm_tiled` | 64x64x64 GEMM + ReLU split into tiles over all cores, B panel staged in the scratchpad, epilogue in the scratchpad; three runs compared for speed and bit-exactness |
-| `lenet` | inference with a **pretrained LeNet-5** on 16 MNIST digits, all cores: im2col + GEMM convolutions, bias/ReLU/max-pool, batched fully connected layers. Logits bit-exact vs. a C model, all 16 digits correct, cycle breakdown per phase. The slowest test (~1 min) |
+| `gemm_tiled` | 64x64x64 GEMM + ReLU split into tiles over all cores, B panel staged in the scratchpad, epilogue in the scratchpad; three runs compared for speed, each checked against the reference model |
+| `lenet` | inference with a **pretrained LeNet-5** on 16 MNIST digits, all cores: im2col + GEMM convolutions, bias/ReLU/max-pool, batched fully connected layers. Logits within tolerance of a C model, all 16 digits correct, cycle breakdown per phase. The slowest test (~1 min) |
 | `make unit` | RTL FP functions vs the C reference, 10 checks x `UNIT_N` random operands |
 
 `make regress` runs all of them. Before merging a hardware change, run it in

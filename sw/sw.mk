@@ -32,6 +32,16 @@ LIBGCC_MARCH ?= rv64imfd_zicsr
 KERNEL_MARCH ?= rv32i_zicsr
 KERNEL_MABI  ?= ilp32
 
+# Element encoding of the data and kernels (bf16.h, accel_isa.h).
+NUMFMT       ?= bf16
+NUMFMT_ID    := $(if $(filter bf16,$(NUMFMT)),0,$(if $(filter fp16,$(NUMFMT)),1,$(if $(filter e4m3,$(NUMFMT)),2,)))
+ifeq ($(NUMFMT_ID),)
+  $(error NUMFMT must be bf16, fp16 or e4m3)
+endif
+NUMFMT_SFX   := $(if $(filter-out 0,$(NUMFMT_ID)),_$(NUMFMT))
+NUMFMT_DEF   := $(if $(filter-out 0,$(NUMFMT_ID)),-DACCEL_NUMFMT=$(NUMFMT_ID))
+SW_BUILD     := $(BUILD)/sw$(NUMFMT_SFX)
+
 SW_COMMON    := $(REPO)/sw/common
 SW_RT_SRCS   := $(SW_COMMON)/crt0.S $(SW_COMMON)/runtime.c
 SW_RT_DEPS   := $(wildcard $(SW_COMMON)/*.h) $(SW_COMMON)/link.ld $(SW_RT_SRCS) $(RULES_FILE)
@@ -41,9 +51,9 @@ SW_CFLAGS ?= -O2 -g
 SW_FLAGS   = -march=$(HOST_MARCH) -mabi=$(HOST_MABI) -mcmodel=medany \
              -ffreestanding -fno-builtin -nostdlib -nostartfiles -static \
              -ffp-contract=off -fno-common -Wall -Wextra -Wno-unused-parameter \
-             -DCHECK_REL_TOL=$(TOL_REL) -DCHECK_ABS_TOL=$(TOL_ABS) \
+             -DCHECK_REL_TOL=$(TOL_REL) -DCHECK_ABS_TOL=$(TOL_ABS) $(NUMFMT_DEF) \
              -I$(SW_COMMON) -T $(SW_COMMON)/link.ld -Wl,--no-warn-rwx-segments $(SW_CFLAGS)
-KERNEL_FLAGS = -march=$(KERNEL_MARCH) -mabi=$(KERNEL_MABI) -g \
+KERNEL_FLAGS = -march=$(KERNEL_MARCH) -mabi=$(KERNEL_MABI) -g $(NUMFMT_DEF) \
              -ffreestanding -nostdlib -nostartfiles -static \
              -I$(SW_COMMON) -T $(SW_COMMON)/kernel.ld -Wl,--no-warn-rwx-segments
 
@@ -52,9 +62,9 @@ LIBGCC = $(shell $(RV_CC) -march=$(LIBGCC_MARCH) -mabi=$(HOST_MABI) -print-libgc
 # $(1) = test name
 define SW_TEST_RULES
 SW_KSRCS_$(1) := $(wildcard $(REPO)/sw/tests/$(1)/*.S)
-SW_KPART_$(1) := $$(if $$(SW_KSRCS_$(1)),$(BUILD)/sw/$(1)/kernel_syms.ld)
+SW_KPART_$(1) := $$(if $$(SW_KSRCS_$(1)),$(SW_BUILD)/$(1)/kernel_syms.ld)
 
-$(BUILD)/sw/$(1)/kernel_syms.ld: $$(SW_KSRCS_$(1)) $(wildcard $(REPO)/sw/tests/$(1)/*.h) $(SW_K_DEPS)
+$(SW_BUILD)/$(1)/kernel_syms.ld: $$(SW_KSRCS_$(1)) $(wildcard $(REPO)/sw/tests/$(1)/*.h) $(SW_K_DEPS)
 	@command -v $(RV_CC) >/dev/null || { echo "ERROR: $(RV_CC) not found -- did you 'source setup_env.sh'?"; exit 1; }
 	@mkdir -p $$(@D)
 	$(RV_CC) $(KERNEL_FLAGS) -I$(REPO)/sw/tests/$(1) -o $$(@D)/kernel.elf $$(SW_KSRCS_$(1))
@@ -62,7 +72,7 @@ $(BUILD)/sw/$(1)/kernel_syms.ld: $$(SW_KSRCS_$(1)) $(wildcard $(REPO)/sw/tests/$
 	$(RV_OBJDUMP) -d $$(@D)/kernel.elf > $$(@D)/kernel.dis
 	$(RV_NM) -g $$(@D)/kernel.elf | sed -E 's/^([0-9a-fA-F]+) +[A-Za-z] +(.+)/\2 = 0x\1;/' > $$@
 
-$(BUILD)/sw/$(1)/$(1).elf: $(wildcard $(REPO)/sw/tests/$(1)/*.[ch]) $$(SW_KPART_$(1)) $(SW_RT_DEPS) $(SW_COMMON)/kernel_blob.S
+$(SW_BUILD)/$(1)/$(1).elf: $(wildcard $(REPO)/sw/tests/$(1)/*.[ch]) $$(SW_KPART_$(1)) $(SW_RT_DEPS) $(SW_COMMON)/kernel_blob.S
 	@command -v $(RV_CC) >/dev/null || { echo "ERROR: $(RV_CC) not found -- did you 'source setup_env.sh'?"; exit 1; }
 	@mkdir -p $$(@D)
 	$(RV_CC) $(SW_FLAGS) -I$(REPO)/sw/tests/$(1) -I$$(@D) -o $$@ \
@@ -72,8 +82,8 @@ $(BUILD)/sw/$(1)/$(1).elf: $(wildcard $(REPO)/sw/tests/$(1)/*.[ch]) $$(SW_KPART_
 endef
 $(foreach t,$(TESTS),$(eval $(call SW_TEST_RULES,$(t))))
 
-ELF = $(BUILD)/sw/$(TEST)/$(TEST).elf
+ELF = $(SW_BUILD)/$(TEST)/$(TEST).elf
 
 .PHONY: sw sw-all
 sw: $(ELF)
-sw-all: $(foreach t,$(TESTS),$(BUILD)/sw/$(t)/$(t).elf)
+sw-all: $(foreach t,$(TESTS),$(SW_BUILD)/$(t)/$(t).elf)

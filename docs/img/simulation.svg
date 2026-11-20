@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="270" viewBox="0 0 860 270" font-family="Helvetica, Arial, sans-serif">
+<title>The simulated system</title>
+<defs>
+  <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+    <path d="M0,0 L10,5 L0,10 z" fill="#2f3b4a"/>
+  </marker>
+  <marker id="as" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+    <path d="M10,0 L0,5 L10,10 z" fill="#2f3b4a"/>
+  </marker>
+</defs>
+<rect x="0" y="0" width="860" height="270" rx="10" fill="#ffffff"/>
+<rect x="20" y="30" width="220" height="90" rx="6" fill="#eceff3" stroke="#5a6472" stroke-width="1.4"/>
+<text x="130.0" y="62.5" font-size="13" text-anchor="middle" font-weight="bold" fill="#1f2933">host_bfm.sv</text>
+<text x="130.0" y="79.5" font-size="13" text-anchor="middle" font-weight="normal" fill="#1f2933">RV64G ISS (C, via DPI)</text>
+<text x="130.0" y="96.5" font-size="13" text-anchor="middle" font-weight="normal" fill="#1f2933">+ time / energy model</text>
+<rect x="370" y="30" width="180" height="90" rx="6" fill="#e3eefc" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="460.0" y="71.0" font-size="13" text-anchor="middle" font-weight="bold" fill="#1f2933">accel_top</text>
+<text x="460.0" y="88.0" font-size="13" text-anchor="middle" font-weight="normal" fill="#1f2933">RTL, the DUT</text>
+<rect x="680" y="30" width="160" height="90" rx="6" fill="#e3f3e6" stroke="#3a8a4a" stroke-width="1.4"/>
+<text x="760.0" y="71.0" font-size="13" text-anchor="middle" font-weight="bold" fill="#1f2933">hbm_model.sv</text>
+<text x="760.0" y="88.0" font-size="13" text-anchor="middle" font-weight="normal" fill="#1f2933">AXI4 slave, timed</text>
+<path d="M240,60 L370,60" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<text x="305.0" y="53.0" font-size="12" text-anchor="middle" font-weight="normal" fill="#5a6472">AXI4-Lite + link delay</text>
+<path d="M370,95 L240,95" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<text x="305.0" y="88.0" font-size="12" text-anchor="middle" font-weight="normal" fill="#5a6472">irq</text>
+<path d="M550,75 L680,75" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<text x="615.0" y="68.0" font-size="12" text-anchor="middle" font-weight="normal" fill="#5a6472">AXI4 (timed)</text>
+<rect x="220" y="175" width="440" height="56" rx="6" fill="#eceff3" stroke="#5a6472" stroke-width="1.4"/>
+<text x="440.0" y="199.0" font-size="13" text-anchor="middle" font-weight="bold" fill="#1f2933">platform.c</text>
+<text x="440.0" y="216.0" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">host RAM, HBM storage, ELF loader, console</text>
+<path d="M130,120 L130,203 L220,203" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)" marker-start="url(#as)"/>
+<path d="M760,120 L760,203 L660,203" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)" marker-start="url(#as)"/>
+<text x="135" y="252" font-size="11" text-anchor="start" font-weight="normal" fill="#5a6472">functional access (cache model inside the region of interest)</text>
+<text x="755" y="252" font-size="11" text-anchor="end" font-weight="normal" fill="#5a6472">storage behind the AXI model</text>
+</svg>

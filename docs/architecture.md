@@ -1,46 +1,23 @@
-# Accelerator architecture
+# Architecture of the reference design
 
-This describes the reference accelerator in `hw/rtl/`. It is deliberately
-simple: correct, readable and parameterised, not fast. It's meant as a
-working baseline that you replace piece by piece. [Ideas for
-improvement](#where-to-go-from-here) are listed at the end.
+This describes the **reference design**: a complete accelerator that fits
+the shell in `hw/rtl/accel_top.sv`, runs every test, and is the source of
+the instruction set and of the measured results in these documents. Its RTL
+is not distributed. It is deliberately simple: correct, readable and
+parameterised, not fast. Build it as described, build part of it, or build
+something else behind the same ports. [What it leaves
+open](#where-to-go-from-here) is listed at the end, and
+[matrix-engines.md](matrix-engines.md) describes the alternatives to its
+matrix unit. Module names below (`accel_core`, `accel_vpu`, ...) are those
+of the reference design.
 
 ## Block diagram
 
-```
-                              accel_top
- host  AXI4-Lite  +-----------------------------------------------------------------+
- ---------------->| accel_csr   start, pc, a0..a7, CORES        run status (all cores)|
- <---- irq -------|  (registers) --------+----------------------------^              |
-                  |                      |                            |              |
-                  |   core 0             v             core 1 .. NUM_CORES-1 (same)  |
-                  |  +-------------------------------------------+   +-----------+   |
-                  |  | accel_core (control core)                 |   |           |   |
-                  |  |  FETCH -> EXEC FSM, x0..x31, pc, vl       |   |   ...     |   |
-                  |  |  +---------+  +------------+ +----------+ |   |           |   |
-                  |  |  | icache  |  | accel_vpu  | | accel_mxu| |<->| barrier / |   |
-                  |  |  |         |  | v0..v31    | | tr*, acc*| |   | abort     |   |
-                  |  |  +---------+  +------------+ +----------+ |   |           |   |
-                  |  +---------------------+---------------------+   +-----+-----+   |
-                  |                        | req / resp                    |         |
-                  |  +---------------------v---------------------+         |         |
-                  |  | accel_spad: address router + scratchpad   |        ...        |
-                  |  |   0x2000_0000.. --> accel_sram_1rw (SRAM) |         |         |
-                  |  |   anything else --> accel_axi_master      |         |         |
-                  |  +---------------------+---------------------+         |         |
-                  |                        | AXI4, ID = core index         |         |
-                  |                  +-----v-------------------------------v-----+   |
-                  |                  | accel_axi_arbiter (N -> 1, round robin)    |   |
-                  |                  +---------------------+----------------------+   |
-                  +----------------------------------------+--------------------------+
-                                                           | AXI4 (HBM_DATA_W bits)
-                                                           v
-                                                          HBM
-```
+![Block diagram of the reference design: host registers (accel_csr), compute cores with control core, instruction cache, vector unit and matrix unit, the scratchpad and address router (accel_spad), the AXI arbiter and HBM](img/architecture.svg)
 
 The accelerator has `NUM_CORES` identical **compute cores**. Each one is a
 complete small accelerator: a control core with its own vector unit (VPU),
-matrix unit (MXU, the "TPU"), instruction cache and private scratchpad
+matrix unit (MXU), instruction cache (I-cache) and private scratchpad
 SRAM. All cores share the HBM port. The host launches 1..NUM_CORES of them
 on the same kernel, and they split the work by core index (SPMD, like
 threads in a GPU block).
@@ -48,17 +25,17 @@ threads in a GPU block).
 | Module | File | Role |
 |---|---|---|
 | `accel_top` | `accel_top.sv` | Wrapper. All external ports, parameter checks, `NUM_CORES` core instances, run status, barrier. This is what you integrate. |
-| `accel_csr` | `accel_csr.sv` | AXI4-Lite slave: control/status registers, kernel arguments, IRQ. |
+| `accel_csr` | `accel_csr.sv` | AXI4-Lite slave: the host registers (control, status, kernel arguments, IRQ). |
 | `accel_core` | `accel_core.sv` | Control core: fetch/decode/execute FSM, scalar RV32I datapath, sequencing of all memory, vector and matrix operations. |
 | `accel_icache` | `accel_icache.sv` | Direct-mapped instruction cache, one line = one HBM beat, flushed at every launch. |
 | `accel_vpu` | `accel_vpu.sv` | Vector register file and VLMAX bf16 lanes. |
-| `accel_mxu` | `accel_mxu.sv` | Tile/accumulator registers and the MAT_DIM x MXU_ROWS MAC array. |
+| `accel_mxu` | `accel_mxu.sv` | Tile/accumulator registers and the matrix engine: a tiled accumulator with `MXU_ROWS x MAT_DIM` MAC units ([matrix-engines.md](matrix-engines.md)). |
 | `accel_spad` | `accel_spad.sv` | Per-core scratchpad and address router: scratchpad addresses go to the SRAM, everything else to HBM. |
-| `accel_sram_1rw` | `accel_sram_1rw.sv` | Generic single-port SRAM. A behavioral array in simulation, tiled out of generated ASAP7 SRAM macros in synthesis ([sram.md](sram.md)). |
+| `accel_sram_1rw` | generated: `build/gen/accel_sram_1rw.sv` | Generic single-port SRAM, provided with the template. A behavioral array in simulation, tiled out of generated ASAP7 SRAM macros in synthesis ([sram.md](sram.md)). |
 | `accel_axi_master` | `accel_axi_master.sv` | Turns "move 2^n aligned bytes" requests into AXI4 bursts. |
 | `accel_axi_arbiter` | `accel_axi_arbiter.sv` | Shares the HBM port between the cores; routes responses back by AXI ID. |
-| `accel_pkg` | `accel_pkg.sv` | Opcodes, CSR offsets, error codes, scratchpad address. |
-| `accel_fp_pkg` | `accel_fp_pkg.sv` | Synthesizable bf16/fp32 functions (see [numerics.md](numerics.md)). |
+| `accel_pkg` | `accel_pkg.sv` (distributed) | Opcodes, host register offsets, kernel CSR numbers, error codes, scratchpad address. |
+| `accel_fp_pkg` | `accel_fp_pkg.sv` (distributed) | Synthesizable bf16/fp32 functions (see [numerics.md](numerics.md)). |
 
 ## External interface
 
@@ -105,16 +82,7 @@ The core is an **unpipelined multi-cycle FSM**. Exactly one instruction is in
 flight, and each one finishes, including all of its memory traffic, before
 the next is fetched:
 
-```
-IDLE --start--> FETCH --hit--> EXEC --+--> FETCH                  (scalar ALU / branch / csrr / vsetvl)
-                  |                   +--> MEM -> MEM_WAIT -> FETCH          (lw/sw, vle16/vse16)
-                  +--miss--> IFILL    +--> VPU_WAIT -> FETCH                 (vector arithmetic)
-                             -> IFILL_WAIT -> FETCH
-                                      +--> MX_ROW -> MX_ROW_WAIT -> ... (MAT_DIM rows) -> FETCH
-                                      +--> MXU_WAIT -> FETCH                 (mzero / mmacc)
-                                      +--> BARRIER -> FETCH                  (barrier)
-                                      +--> IDLE (ecall / fault)
-```
+![State machine of the control core: IDLE, FETCH (with IFILL on an instruction-cache miss), EXEC, and one wait state per kind of instruction, each returning to FETCH](img/core-fsm.svg)
 
 Consequences:
 
@@ -130,8 +98,9 @@ Consequences:
   memory).
 * A `vl` register (set by `vsetvl`) masks every operation: elements `i >= vl`
   of the destination are **left unchanged** ("tail undisturbed").
-* Element-wise ops compute all VLMAX lanes in one cycle. Each lane has one
-  exact bf16 multiplier and one fp32 adder, shared by add, sub and multiply-accumulate.
+* Element-wise ops compute all VLMAX lanes at once, in `1 + FP_PIPE`
+  cycles. Each lane has one exact bf16 multiplier and one fp32 adder,
+  shared by add, sub and multiply-accumulate.
 * Reductions (`vfredsum`, `vfredmax`) walk elements 0..vl-1 one per cycle
   through a single adder, which fixes the summation order.
 * Vector loads/stores move exactly `VLEN/8` bytes (masked by `vl` for
@@ -143,8 +112,11 @@ Consequences:
   `NUM_ACCS` accumulators `acc*`, each `MAT_DIM x MAT_DIM` fp32.
 * `mmacc acc, ta, tb` computes `acc += ta x tb`. For each `k = 0..MAT_DIM-1`
   (in order) it updates `MXU_ROWS` output rows per cycle with `MXU_ROWS x
-  MAT_DIM` MAC units. One `mmacc` takes `MAT_DIM*MAT_DIM/MXU_ROWS` cycles.
-  `MXU_ROWS` changes area and speed, never results.
+  MAT_DIM` MAC units. One `mmacc` takes `MAT_DIM*MAT_DIM/MXU_ROWS` cycles
+  (one more with `FP_PIPE >= 1`). `MXU_ROWS` changes area and speed, never
+  results. This arrangement is a *tiled accumulator*;
+  [matrix-engines.md](matrix-engines.md) compares it with dot-product
+  engines and systolic arrays.
 * Each MAC is `acc = fp32_add(acc, bf16 x bf16)`. The product is exact, and
   the accumulation is rounded to fp32 once per step.
 * `mld`/`mst`/`msta` move a tile one row at a time (`MAT_DIM*2` bytes per
@@ -152,7 +124,7 @@ Consequences:
   row-major matrices. `msta` rounds the fp32 accumulator to bf16 on the way
   out.
 
-### Memory engine
+### Memory path
 
 The core issues requests of the form *(read|write, address, 2^size bytes)*,
 with sizes from 1 byte up to `XFER_W/8` bytes, where `XFER_W = max(VLEN,
@@ -190,7 +162,7 @@ See [sram.md](sram.md).
 ### Multiple cores
 
 * `NUM_CORES` (1..16) compute cores, each with its own VPU, MXU,
-  registers, I-cache and scratchpad, so `NUM_CORES` vector or tensor
+  registers, I-cache and scratchpad, so `NUM_CORES` vector or matrix
   operations run at the same time.
 * `NUM_VPUS` / `NUM_MXUS` (default: all cores) give only the first cores a
   vector / matrix unit, e.g. one VPU and four MXUs. Each unit works with its
@@ -221,26 +193,28 @@ cache holds 128 instructions.
 
 ## Performance
 
-With the default parameters and the default HBM model latency (40 cycles):
+With the default parameters, a 2.5 ns clock and the platform's HBM latency
+(100 ns = 40 cycles):
 
 | Operation | Approximate cycles |
 |---|---|
 | scalar instruction (I-cache hit) | 2 |
 | I-cache miss | + ~45 |
 | `vle16` / `vse16` / `lw` / `sw` | ~45 (latency + 5) |
-| element-wise vector op | 4 |
+| element-wise vector op | 4 + `FP_PIPE` |
 | reduction | vl + 4 |
 | `mld` | ~45 + 2 x MAT_DIM (HBM: rows requested back to back), MAT_DIM + 2 (scratchpad) |
 | `mst` / `msta` | MAT_DIM x ~45 (HBM, one write at a time), MAT_DIM + 2 (scratchpad) |
 | scalar / vector load or store to the scratchpad | 4 |
-| `mmacc` | MAT_DIM*MAT_DIM/MXU_ROWS + 3 |
+| `mmacc` | MAT_DIM*MAT_DIM/MXU_ROWS + 3 (+ 1 with `FP_PIPE >= 1`) |
 | `barrier` | 1 after the last core arrives |
 
 Use the `CYCLES` / `INSTRET` registers (host side) or `csrr cycle` (kernel
 side) to measure. The `gemm` test prints MACs/cycle: about 2 MACs/cycle
 against a peak of `MAT_DIM*MXU_ROWS` = 64 per core, because tile loads from
-HBM dominate. `gemm_tiled` (64x64x64, default configuration) shows what the
-scratchpad and the second core buy:
+HBM dominate. `gemm_tiled` (64x64x64, default configuration, measured with
+`FP_PIPE=0`; `FP_PIPE=1` adds 0.4 %) shows what the scratchpad and the
+second core buy:
 
 | Run | Cycles | MACs/cycle | Speed-up |
 |---|---|---|---|
@@ -254,8 +228,9 @@ fetching more than one row at a time (see below).
 
 ## Where to go from here
 
-The template is meant to be modified. Some natural projects, roughly in
-order of effort:
+The reference design leaves a lot open. Some natural projects, roughly in
+order of effort (software-only improvements are in
+[software-optimization.md](software-optimization.md)):
 
 1. **Multiple outstanding AXI transactions.** Issue all MAT_DIM row reads of
    an `mld` back to back (AXI allows many outstanding reads; the arbiter
@@ -270,8 +245,9 @@ order of effort:
 4. **A DMA engine** that copies HBM <-> scratchpad in the background
    (whole tiles in one burst) while the core computes, i.e. double
    buffering. Or a **shared** scratchpad that all cores can read.
-5. **Systolic array MXU** (weight- or output-stationary) instead of the
-   broadcast MAC array.
+5. **A different matrix engine**: dot-product engines or a systolic array
+   (weight- or output-stationary) instead of the tiled accumulator, see
+   [matrix-engines.md](matrix-engines.md).
 6. **New instructions**: strided/indexed vector loads, `vexp`/`vrecip` for
    softmax, int8 MACs, fused activation on `msta`. Add them to
    `accel_pkg.sv`, `accel_isa.h`, `docs/isa.md` and `bf16.h` together.

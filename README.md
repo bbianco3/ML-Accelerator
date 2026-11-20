@@ -9,18 +9,19 @@ tools are installed.
 > **The accelerator RTL is not included.** `hw/rtl/accel_top.sv` is an empty
 > shell with the top-level ports; designing what goes inside is the
 > project. Until then every test fails with a timeout. The documents in
-> `docs/` describe the *reference architecture* that the instruction set,
-> the software in `sw/` and the measured results come from: use it as a
-> specification and a starting point, or change the instruction set,
-> kernels and memory formats along with your hardware.
+> `docs/` describe the *reference design*, a complete accelerator that is
+> not distributed: the instruction set, the software in `sw/` and the
+> measured results come from it. Use it as a specification and a starting
+> point, or change the instruction set, kernels and memory formats along
+> with your hardware.
 
 What you get:
 
 * **`hw/`**: the top-level shell (`hw/rtl/accel_top.sv`), the instruction
   and register definitions (`accel_pkg.sv`), bf16/fp32 arithmetic functions
   that match the software reference model (`accel_fp_pkg.sv`), an SRAM macro
-  generator and the synthesis flow. The reference architecture it is meant
-  to hold:
+  generator and the synthesis flow. The reference design that the shell
+  is meant to hold:
   * an AXI4-Lite host control port, an AXI4 **HBM** port and an interrupt
   * `NUM_CORES` compute cores (default 2) that run **RISC-V-encoded
     kernels** out of HBM (RV32I + custom vector, matrix and barrier
@@ -35,19 +36,18 @@ What you get:
   (instruction-set simulator over DPI with a time and energy model), a
   host-to-accelerator link delay, a timed HBM model and pass/fail reporting
 * **`sw/`**: host runtime, accelerator driver, kernel assembler macros, a
-  bit-exact bf16 reference model, matrix-layout helpers and 14 example tests,
+  bf16 reference model, tolerance checks, matrix-layout helpers and 14 tests,
   including inference with a **pretrained LeNet-5** on MNIST digits
-* **`competition.json`** + `make score`: shared limits (clock, area, host
-  link delay, result tolerance) and the score, area x energy x time^2
-* **`docs/`**: architecture, ISA, numerics, simulation behaviour, memory
-  formats, parameters, synthesis, design decisions and a 3-week project guide
+* **`competition.json`** + `make score`: one settings file for simulation,
+  synthesis and scoring. The clock period, area target and synthesis
+  options in it are **yours to tune**; the platform (host link delay, HBM
+  latency, result tolerance) is fixed. The score is area x energy x time^2
+* **`docs/`**: a project guide, the reference design's architecture and
+  ISA, numerics, simulation, memory formats, parameters, synthesis, and
+  guides to matrix engines (tiled accumulator, dot-product engine, systolic
+  array) and to making the software faster
 
-```
-          RV64G host (C)  --AXI4-Lite-->  accel_top                 --AXI4-->  HBM
-          main.c: prepare data,           core 0 .. NUM_CORES-1                kernels + data
-          launch, check results             control core + VPU (VLEN)
-                          <----- irq -----  + MXU (MAT_DIM^2) + scratchpad SRAM
-```
+![Host CPU, accelerator and HBM: the host CPU controls the accelerator over AXI4-Lite and gets an interrupt back; the accelerator reads and writes HBM over AXI4](docs/img/overview.svg)
 
 ## Quick start (on an EWS machine)
 
@@ -67,12 +67,15 @@ With the empty `accel_top` shell, `hello` ends with
 
 because nothing answers the host on the control port. Your first goal is to
 make it end with `[tb] *** TEST PASSED ***`; then work up the milestones in
-[docs/project-guide.md](docs/project-guide.md) until `make regress` passes.
+[docs/project-guide.md](docs/project-guide.md) until `make regress` passes. At the end
+each team hands in a short report with an architecture diagram and answers
+questions about its design decisions
+([docs/project-guide.md](docs/project-guide.md#report-diagram-and-design-review)).
 
-More:
+More (the simulation commands need a working design to pass):
 
 ```sh
-make help                                  # all targets and knobs
+make help                                  # all targets, knobs and the settings in force
 make run TEST=gemm SIM_ARGS=+accel_trace   # trace every accelerator instruction
 make run TEST=matmul WAVES=1 && make verdi TEST=matmul WAVES=1   # waveforms
 make regress VLEN=512 MAT_DIM=8 MXU_ROWS=8 # another hardware configuration
@@ -84,7 +87,10 @@ make regress SIM_SRAM=macro                # simulate the SRAM macro structure D
 make unit                                  # FP unit: RTL vs C reference
 make lint                                  # VCS lint of the RTL
 make synth                                 # DC, ASAP7, 400 MHz (fetches the PDK, generates SRAMs)
-make synth CLK_PERIOD=2.0 VLEN=128         # other clock / config (period in ns)
+make synth CLK_PERIOD=2.0 VLEN=128         # other clock / configuration (period in ns)
+make synth SYNTH_RETIME=1 SYNTH_CLOCK_GATING=1 SYNTH_TAG=try1   # synthesis settings, own result directory
+make limits                                # timing met? area within the target?
+make score TEST=lenet                      # area x energy x time^2
 make synth SRAM=flops                      # scratchpads from flip-flops, to compare
 make synth PDK=freepdk45 CLK_PERIOD=10     # FreePDK45 instead
 ```
@@ -110,7 +116,8 @@ EWS_HOST=<netid>@linux.ews.illinois.edu ./run_on_ews.sh run TEST=matmul WAVES=1
 ## Repository layout
 
 ```
-hw/rtl/            accelerator RTL (filelist.f = compile order)
+competition.json   settings: clock period, area target, synthesis options (yours), platform (fixed)
+hw/rtl/            your accelerator RTL: the shell, two packages, filelist.f (compile order)
 hw/sram/           SRAM macro generator (sram_gen.py) and `make sram` script
 hw/synth/          Design Compiler script + make fragment
 hw/synth/pdk/      per-PDK settings (asap7.tcl, freepdk45.tcl) + ASAP7 fetch/compile script
@@ -121,6 +128,7 @@ sim/unit/fp/       FP unit test (RTL functions vs C reference)
 sw/common/         crt0, linker script, runtime, accel.h (driver), accel_isa.h (kernel
                    macros), bf16.h (reference numerics), mat_layout.h, memory_map.h
 sw/tests/<name>/   one test each: main.c (host) + kernel.S (accelerator) [+ plusargs]
+tools/             competition.py: reads the settings file, checks limits, computes the score
 docs/              documentation (start at docs/README.md)
 build/             everything generated (git-ignored)
 ```
@@ -158,6 +166,6 @@ HBM_DATA_W=1024`, with 1 to 8 cores, scratchpads from none to 64 KiB
 back-pressure, so the platform, software and tests are known to work
 together. Its synthesis results and timing bottlenecks are in
 [docs/synthesis.md](docs/synthesis.md#reference-results). The reference
-architecture is intentionally simple and slow: see
+design is intentionally simple and slow: see
 [docs/architecture.md](docs/architecture.md#where-to-go-from-here) and
 [docs/project-guide.md](docs/project-guide.md) for where to go.

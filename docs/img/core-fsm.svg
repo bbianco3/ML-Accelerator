@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1090" height="450" viewBox="0 0 1090 450" font-family="Helvetica, Arial, sans-serif">
+<title>State machine of the reference design's control core</title>
+<defs>
+  <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+    <path d="M0,0 L10,5 L0,10 z" fill="#2f3b4a"/>
+  </marker>
+  <marker id="as" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+    <path d="M10,0 L0,5 L10,10 z" fill="#2f3b4a"/>
+  </marker>
+</defs>
+<rect x="0" y="0" width="1090" height="450" rx="10" fill="#ffffff"/>
+<rect x="20" y="30" width="104" height="32" rx="6" fill="#fdf0dc" stroke="#b87a1e" stroke-width="1.4"/>
+<text x="72.0" y="50.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">IDLE</text>
+<rect x="170" y="30" width="104" height="32" rx="6" fill="#fdf0dc" stroke="#b87a1e" stroke-width="1.4"/>
+<text x="222.0" y="50.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">FETCH</text>
+<rect x="320" y="30" width="104" height="32" rx="6" fill="#fdf0dc" stroke="#b87a1e" stroke-width="1.4"/>
+<text x="372.0" y="50.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">EXEC</text>
+<path d="M124,46 L170,46" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<text x="147.0" y="39.0" font-size="12" text-anchor="middle" font-weight="normal" fill="#5a6472">start</text>
+<path d="M274,46 L320,46" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<text x="297.0" y="39.0" font-size="12" text-anchor="middle" font-weight="normal" fill="#5a6472">hit</text>
+<rect x="170" y="130" width="104" height="32" rx="6" fill="#fdf0dc" stroke="#b87a1e" stroke-width="1.4"/>
+<text x="222.0" y="150.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">IFILL</text>
+<rect x="170" y="210" width="104" height="32" rx="6" fill="#fdf0dc" stroke="#b87a1e" stroke-width="1.4"/>
+<text x="222.0" y="230.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">IFILL_WAIT</text>
+<path d="M200,62 L200,130" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<text x="192" y="100" font-size="12" text-anchor="end" font-weight="normal" fill="#5a6472">miss</text>
+<path d="M200,162 L200,210" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<path d="M274,226 L298,226 L298,90 L250,90 L250,62" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<text x="304" y="160" font-size="11" text-anchor="start" font-weight="normal" fill="#5a6472">line filled</text>
+<path d="M424,46 L460,46 L460,406" fill="none" stroke="#2f3b4a" stroke-width="1.5"/>
+<path d="M460,46.0 L760,46.0" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="760" y="30" width="80" height="32" rx="6" fill="#ffffff" stroke="#8a94a3" stroke-width="1.4" stroke-dasharray="5 4"/>
+<text x="800.0" y="50.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">→ FETCH</text>
+<text x="855" y="50.0" font-size="12" text-anchor="start" font-weight="normal" fill="#5a6472">scalar ALU, branch, csrr, vsetvl</text>
+<circle cx="460" cy="106.0" r="3" fill="#2f3b4a"/>
+<path d="M460,106.0 L490,106.0" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="490" y="90" width="104" height="32" rx="6" fill="#fdf0dc" stroke="#b87a1e" stroke-width="1.4"/>
+<text x="542.0" y="110.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">MEM</text>
+<path d="M594,106.0 L625,106.0" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="625" y="90" width="104" height="32" rx="6" fill="#fdf0dc" stroke="#b87a1e" stroke-width="1.4"/>
+<text x="677.0" y="110.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">MEM_WAIT</text>
+<path d="M729,106.0 L760,106.0" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="760" y="90" width="80" height="32" rx="6" fill="#ffffff" stroke="#8a94a3" stroke-width="1.4" stroke-dasharray="5 4"/>
+<text x="800.0" y="110.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">→ FETCH</text>
+<text x="855" y="110.0" font-size="12" text-anchor="start" font-weight="normal" fill="#5a6472">lw / sw, vle16 / vse16</text>
+<circle cx="460" cy="166.0" r="3" fill="#2f3b4a"/>
+<path d="M460,166.0 L490,166.0" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="490" y="150" width="104" height="32" rx="6" fill="#fdf0dc" stroke="#b87a1e" stroke-width="1.4"/>
+<text x="542.0" y="170.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">VPU_WAIT</text>
+<path d="M594,166.0 L760,166.0" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="760" y="150" width="80" height="32" rx="6" fill="#ffffff" stroke="#8a94a3" stroke-width="1.4" stroke-dasharray="5 4"/>
+<text x="800.0" y="170.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">→ FETCH</text>
+<text x="855" y="170.0" font-size="12" text-anchor="start" font-weight="normal" fill="#5a6472">vector arithmetic</text>
+<circle cx="460" cy="226.0" r="3" fill="#2f3b4a"/>
+<path d="M460,226.0 L490,226.0" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="490" y="210" width="104" height="32" rx="6" fill="#fdf0dc" stroke="#b87a1e" stroke-width="1.4"/>
+<text x="542.0" y="230.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">MX_ROW</text>
+<path d="M594,226.0 L625,226.0" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="625" y="210" width="104" height="32" rx="6" fill="#fdf0dc" stroke="#b87a1e" stroke-width="1.4"/>
+<text x="677.0" y="230.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">MX_ROW_WAIT</text>
+<path d="M729,226.0 L760,226.0" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="760" y="210" width="80" height="32" rx="6" fill="#ffffff" stroke="#8a94a3" stroke-width="1.4" stroke-dasharray="5 4"/>
+<text x="800.0" y="230.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">→ FETCH</text>
+<text x="855" y="230.0" font-size="12" text-anchor="start" font-weight="normal" fill="#5a6472">mld / mst / msta: MAT_DIM rows</text>
+<path d="M677.0,242 L677.0,256 L542.0,256 L542.0,242" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<text x="609.5" y="268" font-size="11" text-anchor="middle" font-weight="normal" fill="#5a6472">next row</text>
+<circle cx="460" cy="286.0" r="3" fill="#2f3b4a"/>
+<path d="M460,286.0 L490,286.0" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="490" y="270" width="104" height="32" rx="6" fill="#fdf0dc" stroke="#b87a1e" stroke-width="1.4"/>
+<text x="542.0" y="290.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">MXU_WAIT</text>
+<path d="M594,286.0 L760,286.0" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="760" y="270" width="80" height="32" rx="6" fill="#ffffff" stroke="#8a94a3" stroke-width="1.4" stroke-dasharray="5 4"/>
+<text x="800.0" y="290.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">→ FETCH</text>
+<text x="855" y="290.0" font-size="12" text-anchor="start" font-weight="normal" fill="#5a6472">mzero / mmacc</text>
+<circle cx="460" cy="346.0" r="3" fill="#2f3b4a"/>
+<path d="M460,346.0 L490,346.0" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="490" y="330" width="104" height="32" rx="6" fill="#fdf0dc" stroke="#b87a1e" stroke-width="1.4"/>
+<text x="542.0" y="350.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">BARRIER</text>
+<path d="M594,346.0 L760,346.0" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="760" y="330" width="80" height="32" rx="6" fill="#ffffff" stroke="#8a94a3" stroke-width="1.4" stroke-dasharray="5 4"/>
+<text x="800.0" y="350.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">→ FETCH</text>
+<text x="855" y="350.0" font-size="12" text-anchor="start" font-weight="normal" fill="#5a6472">barrier</text>
+<circle cx="460" cy="406.0" r="3" fill="#2f3b4a"/>
+<path d="M460,406.0 L490,406.0" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="490" y="390" width="104" height="32" rx="6" fill="#fdf0dc" stroke="#b87a1e" stroke-width="1.4"/>
+<text x="542.0" y="410.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">IDLE</text>
+<text x="609" y="410.0" font-size="12" text-anchor="start" font-weight="normal" fill="#5a6472">ecall (done) or fault</text>
+</svg>
