@@ -13,36 +13,7 @@ of the reference design.
 
 ## Block diagram
 
-```
-                              accel_top
- host  AXI4-Lite  +-----------------------------------------------------------------+
- ---------------->| accel_csr   start, pc, a0..a7, CORES        run status (all cores)|
- <---- irq -------|  (registers) --------+----------------------------^              |
-                  |                      |                            |              |
-                  |   core 0             v             core 1 .. NUM_CORES-1 (same)  |
-                  |  +-------------------------------------------+   +-----------+   |
-                  |  | accel_core (control core)                 |   |           |   |
-                  |  |  FETCH -> EXEC FSM, x0..x31, pc, vl       |   |   ...     |   |
-                  |  |  +---------+  +------------+ +----------+ |   |           |   |
-                  |  |  | icache  |  | accel_vpu  | | accel_mxu| |<->| barrier / |   |
-                  |  |  |         |  | v0..v31    | | tr*, acc*| |   | abort     |   |
-                  |  |  +---------+  +------------+ +----------+ |   |           |   |
-                  |  +---------------------+---------------------+   +-----+-----+   |
-                  |                        | req / resp                    |         |
-                  |  +---------------------v---------------------+         |         |
-                  |  | accel_spad: address router + scratchpad   |        ...        |
-                  |  |   0x2000_0000.. --> accel_sram_1rw (SRAM) |         |         |
-                  |  |   anything else --> accel_axi_master      |         |         |
-                  |  +---------------------+---------------------+         |         |
-                  |                        | AXI4, ID = core index         |         |
-                  |                  +-----v-------------------------------v-----+   |
-                  |                  | accel_axi_arbiter (N -> 1, round robin)    |   |
-                  |                  +---------------------+----------------------+   |
-                  +----------------------------------------+--------------------------+
-                                                           | AXI4 (HBM_DATA_W bits)
-                                                           v
-                                                          HBM
-```
+![Block diagram of the reference design: host registers (accel_csr), compute cores with control core, instruction cache, vector unit and matrix unit, the scratchpad and address router (accel_spad), the AXI arbiter and HBM](img/architecture.svg)
 
 The accelerator has `NUM_CORES` identical **compute cores**. Each one is a
 complete small accelerator: a control core with its own vector unit (VPU),
@@ -111,16 +82,7 @@ The core is an **unpipelined multi-cycle FSM**. Exactly one instruction is in
 flight, and each one finishes, including all of its memory traffic, before
 the next is fetched:
 
-```
-IDLE --start--> FETCH --hit--> EXEC --+--> FETCH                  (scalar ALU / branch / csrr / vsetvl)
-                  |                   +--> MEM -> MEM_WAIT -> FETCH          (lw/sw, vle16/vse16)
-                  +--miss--> IFILL    +--> VPU_WAIT -> FETCH                 (vector arithmetic)
-                             -> IFILL_WAIT -> FETCH
-                                      +--> MX_ROW -> MX_ROW_WAIT -> ... (MAT_DIM rows) -> FETCH
-                                      +--> MXU_WAIT -> FETCH                 (mzero / mmacc)
-                                      +--> BARRIER -> FETCH                  (barrier)
-                                      +--> IDLE (ecall / fault)
-```
+![State machine of the control core: IDLE, FETCH (with IFILL on an instruction-cache miss), EXEC, and one wait state per kind of instruction, each returning to FETCH](img/core-fsm.svg)
 
 Consequences:
 

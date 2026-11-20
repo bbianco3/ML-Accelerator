@@ -5,15 +5,7 @@ is modelled, what is not, and every knob you can turn.
 
 ## The simulated system
 
-```
-   +-----------------------+ AXI4-Lite + link delay+--------------+  AXI4 (timed)  +-----------+
-   | host_bfm.sv           |---------------------->|  accel_top   |--------------->| hbm_model |
-   |  RV64G ISS (C, DPI)   |<--------- irq --------|  (RTL, DUT)  |                |  .sv      |
-   +-----------+-----------+                       +--------------+                +-----+-----+
-               |                                                                         |
-               |           platform.c: host RAM, HBM bytes, ELF loader, console          |
-               +------------- functional (host side: cache model in the ROI) -------------+
-```
+![The simulated system: host_bfm.sv (host CPU), accel_top (the design under test), hbm_model.sv, and platform.c holding the memories](img/simulation.svg)
 
 | Piece | File | Accuracy |
 |---|---|---|

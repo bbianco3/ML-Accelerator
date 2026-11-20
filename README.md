@@ -47,12 +47,7 @@ What you get:
   guides to matrix engines (tiled accumulator, dot-product engine, systolic
   array) and to making the software faster
 
-```
-          RV64G host (C)  --AXI4-Lite-->  accel_top                 --AXI4-->  HBM
-          main.c: prepare data,           core 0 .. NUM_CORES-1                kernels + data
-          launch, check results             control core + VPU (VLEN)
-                          <----- irq -----  + MXU (MAT_DIM^2) + scratchpad SRAM
-```
+![Host CPU, accelerator and HBM: the host CPU controls the accelerator over AXI4-Lite and gets an interrupt back; the accelerator reads and writes HBM over AXI4](docs/img/overview.svg)
 
 ## Quick start (on an EWS machine)
 

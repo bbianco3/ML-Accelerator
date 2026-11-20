@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="880" height="490" viewBox="0 0 880 490" font-family="Helvetica, Arial, sans-serif">
+<title>Weight-stationary systolic array</title>
+<defs>
+  <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+    <path d="M0,0 L10,5 L0,10 z" fill="#2f3b4a"/>
+  </marker>
+  <marker id="as" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+    <path d="M10,0 L0,5 L10,10 z" fill="#2f3b4a"/>
+  </marker>
+</defs>
+<rect x="0" y="0" width="880" height="490" rx="10" fill="#ffffff"/>
+<rect x="170" y="85" width="100" height="56" rx="6" fill="#e3eefc" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="220.0" y="109.0" font-size="13" text-anchor="middle" font-weight="bold" fill="#1f2933">B[0][0]</text>
+<text x="220.0" y="126.0" font-size="11" text-anchor="middle" font-weight="normal" fill="#1f2933">stored</text>
+<path d="M270,113.0 L320,113.0" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<path d="M220.0,141 L220.0,190" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="320" y="85" width="100" height="56" rx="6" fill="#e3eefc" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="370.0" y="109.0" font-size="13" text-anchor="middle" font-weight="bold" fill="#1f2933">B[0][1]</text>
+<text x="370.0" y="126.0" font-size="11" text-anchor="middle" font-weight="normal" fill="#1f2933">stored</text>
+<path d="M420,113.0 L470,113.0" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<path d="M370.0,141 L370.0,190" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="470" y="85" width="100" height="56" rx="6" fill="#e3eefc" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="520.0" y="109.0" font-size="13" text-anchor="middle" font-weight="bold" fill="#1f2933">B[0][2]</text>
+<text x="520.0" y="126.0" font-size="11" text-anchor="middle" font-weight="normal" fill="#1f2933">stored</text>
+<path d="M520.0,141 L520.0,190" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="20" y="98.0" width="95" height="30" rx="6" fill="#e3eefc" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="67.5" y="117.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">A[*][0]</text>
+<path d="M115,113.0 L170,113.0" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="170" y="190" width="100" height="56" rx="6" fill="#e3eefc" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="220.0" y="214.0" font-size="13" text-anchor="middle" font-weight="bold" fill="#1f2933">B[1][0]</text>
+<text x="220.0" y="231.0" font-size="11" text-anchor="middle" font-weight="normal" fill="#1f2933">stored</text>
+<path d="M270,218.0 L320,218.0" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<path d="M220.0,246 L220.0,295" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="320" y="190" width="100" height="56" rx="6" fill="#e3eefc" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="370.0" y="214.0" font-size="13" text-anchor="middle" font-weight="bold" fill="#1f2933">B[1][1]</text>
+<text x="370.0" y="231.0" font-size="11" text-anchor="middle" font-weight="normal" fill="#1f2933">stored</text>
+<path d="M420,218.0 L470,218.0" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<path d="M370.0,246 L370.0,295" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="470" y="190" width="100" height="56" rx="6" fill="#e3eefc" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="520.0" y="214.0" font-size="13" text-anchor="middle" font-weight="bold" fill="#1f2933">B[1][2]</text>
+<text x="520.0" y="231.0" font-size="11" text-anchor="middle" font-weight="normal" fill="#1f2933">stored</text>
+<path d="M520.0,246 L520.0,295" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="20" y="203.0" width="95" height="30" rx="6" fill="#e3eefc" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="67.5" y="222.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">A[*][1]</text>
+<path d="M115,218.0 L170,218.0" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="170" y="295" width="100" height="56" rx="6" fill="#e3eefc" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="220.0" y="319.0" font-size="13" text-anchor="middle" font-weight="bold" fill="#1f2933">B[2][0]</text>
+<text x="220.0" y="336.0" font-size="11" text-anchor="middle" font-weight="normal" fill="#1f2933">stored</text>
+<path d="M270,323.0 L320,323.0" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<path d="M220.0,351 L220.0,391" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="320" y="295" width="100" height="56" rx="6" fill="#e3eefc" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="370.0" y="319.0" font-size="13" text-anchor="middle" font-weight="bold" fill="#1f2933">B[2][1]</text>
+<text x="370.0" y="336.0" font-size="11" text-anchor="middle" font-weight="normal" fill="#1f2933">stored</text>
+<path d="M420,323.0 L470,323.0" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<path d="M370.0,351 L370.0,391" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="470" y="295" width="100" height="56" rx="6" fill="#e3eefc" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="520.0" y="319.0" font-size="13" text-anchor="middle" font-weight="bold" fill="#1f2933">B[2][2]</text>
+<text x="520.0" y="336.0" font-size="11" text-anchor="middle" font-weight="normal" fill="#1f2933">stored</text>
+<path d="M520.0,351 L520.0,391" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="20" y="308.0" width="95" height="30" rx="6" fill="#e3eefc" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="67.5" y="327.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">A[*][2]</text>
+<path d="M115,323.0 L170,323.0" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="180.0" y="20" width="80" height="28" rx="6" fill="#ffffff" stroke="#8a94a3" stroke-width="1.4"/>
+<text x="220.0" y="38.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">0</text>
+<rect x="175.0" y="391" width="90" height="30" rx="6" fill="#e3f3e6" stroke="#3a8a4a" stroke-width="1.4"/>
+<text x="220.0" y="410.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">C[*][0]</text>
+<path d="M220.0,48 L220.0,85" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="330.0" y="20" width="80" height="28" rx="6" fill="#ffffff" stroke="#8a94a3" stroke-width="1.4"/>
+<text x="370.0" y="38.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">0</text>
+<rect x="325.0" y="391" width="90" height="30" rx="6" fill="#e3f3e6" stroke="#3a8a4a" stroke-width="1.4"/>
+<text x="370.0" y="410.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">C[*][1]</text>
+<path d="M370.0,48 L370.0,85" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="480.0" y="20" width="80" height="28" rx="6" fill="#ffffff" stroke="#8a94a3" stroke-width="1.4"/>
+<text x="520.0" y="38.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">0</text>
+<rect x="475.0" y="391" width="90" height="30" rx="6" fill="#e3f3e6" stroke="#3a8a4a" stroke-width="1.4"/>
+<text x="520.0" y="410.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">C[*][2]</text>
+<path d="M520.0,48 L520.0,85" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<text x="640" y="100" font-size="12" text-anchor="start" font-weight="normal" fill="#5a6472">partial sums enter at the top as 0</text>
+<text x="640" y="118" font-size="12" text-anchor="start" font-weight="normal" fill="#5a6472">(or as the old C, to accumulate)</text>
+<text x="640" y="136" font-size="12" text-anchor="start" font-weight="normal" fill="#5a6472"></text>
+<text x="640" y="154" font-size="12" text-anchor="start" font-weight="normal" fill="#5a6472">row k of the grid holds row k of B;</text>
+<text x="640" y="172" font-size="12" text-anchor="start" font-weight="normal" fill="#5a6472">element k of each A row enters row k</text>
+<text x="640" y="190" font-size="12" text-anchor="start" font-weight="normal" fill="#5a6472"></text>
+<text x="640" y="208" font-size="12" text-anchor="start" font-weight="normal" fill="#5a6472">one finished row of C</text>
+<text x="640" y="226" font-size="12" text-anchor="start" font-weight="normal" fill="#5a6472">leaves the bottom every cycle</text>
+<rect x="170" y="440" width="420" height="34" rx="6" fill="#ffffff" stroke="#8a94a3" stroke-width="1.4"/>
+<text x="380.0" y="461.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">each PE, every cycle:  sum_out = sum_in + a·b;  pass a right</text>
+</svg>

@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="325" viewBox="0 0 900 325" font-family="Helvetica, Arial, sans-serif">
+<title>Tiled accumulator</title>
+<defs>
+  <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+    <path d="M0,0 L10,5 L0,10 z" fill="#2f3b4a"/>
+  </marker>
+  <marker id="as" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+    <path d="M10,0 L0,5 L10,10 z" fill="#2f3b4a"/>
+  </marker>
+</defs>
+<rect x="0" y="0" width="900" height="325" rx="10" fill="#ffffff"/>
+<rect x="20" y="102" width="100" height="36" rx="6" fill="#e3eefc" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="70.0" y="124.5" font-size="13" text-anchor="middle" font-weight="normal" fill="#1f2933">A[i][k]</text>
+<path d="M120,120 L600,120" fill="none" stroke="#2f3b4a" stroke-width="1.5"/>
+<rect x="155" y="30" width="90" height="30" rx="6" fill="#e3eefc" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="200.0" y="49.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">B[k][0]</text>
+<path d="M200,60 L200,105" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<circle cx="200" cy="120" r="15" fill="#d4e4fa" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="200" y="125.5" font-size="17" text-anchor="middle" font-weight="bold" fill="#1f2933">×</text>
+<path d="M200,135 L200,170" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<circle cx="200" cy="185" r="15" fill="#d4e4fa" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="200" y="190.5" font-size="17" text-anchor="middle" font-weight="bold" fill="#1f2933">+</text>
+<path d="M200,200 L200,235" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="155" y="235" width="90" height="32" rx="6" fill="#e3f3e6" stroke="#3a8a4a" stroke-width="1.4"/>
+<text x="200.0" y="255.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">acc[i][0]</text>
+<path d="M245,251 L255,251 L255,185 L215,185" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="275" y="30" width="90" height="30" rx="6" fill="#e3eefc" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="320.0" y="49.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">B[k][1]</text>
+<path d="M320,60 L320,105" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<circle cx="320" cy="120" r="15" fill="#d4e4fa" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="320" y="125.5" font-size="17" text-anchor="middle" font-weight="bold" fill="#1f2933">×</text>
+<path d="M320,135 L320,170" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<circle cx="320" cy="185" r="15" fill="#d4e4fa" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="320" y="190.5" font-size="17" text-anchor="middle" font-weight="bold" fill="#1f2933">+</text>
+<path d="M320,200 L320,235" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="275" y="235" width="90" height="32" rx="6" fill="#e3f3e6" stroke="#3a8a4a" stroke-width="1.4"/>
+<text x="320.0" y="255.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">acc[i][1]</text>
+<path d="M365,251 L375,251 L375,185 L335,185" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="395" y="30" width="90" height="30" rx="6" fill="#e3eefc" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="440.0" y="49.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">B[k][2]</text>
+<path d="M440,60 L440,105" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<circle cx="440" cy="120" r="15" fill="#d4e4fa" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="440" y="125.5" font-size="17" text-anchor="middle" font-weight="bold" fill="#1f2933">×</text>
+<path d="M440,135 L440,170" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<circle cx="440" cy="185" r="15" fill="#d4e4fa" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="440" y="190.5" font-size="17" text-anchor="middle" font-weight="bold" fill="#1f2933">+</text>
+<path d="M440,200 L440,235" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="395" y="235" width="90" height="32" rx="6" fill="#e3f3e6" stroke="#3a8a4a" stroke-width="1.4"/>
+<text x="440.0" y="255.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">acc[i][2]</text>
+<path d="M485,251 L495,251 L495,185 L455,185" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<text x="520" y="170" font-size="20" text-anchor="middle" font-weight="normal" fill="#1f2933">…</text>
+<rect x="555" y="30" width="90" height="30" rx="6" fill="#e3eefc" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="600.0" y="49.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">B[k][T-1]</text>
+<path d="M600,60 L600,105" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<circle cx="600" cy="120" r="15" fill="#d4e4fa" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="600" y="125.5" font-size="17" text-anchor="middle" font-weight="bold" fill="#1f2933">×</text>
+<path d="M600,135 L600,170" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<circle cx="600" cy="185" r="15" fill="#d4e4fa" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="600" y="190.5" font-size="17" text-anchor="middle" font-weight="bold" fill="#1f2933">+</text>
+<path d="M600,200 L600,235" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="555" y="235" width="90" height="32" rx="6" fill="#e3f3e6" stroke="#3a8a4a" stroke-width="1.4"/>
+<text x="600.0" y="255.5" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">acc[i][T-1]</text>
+<path d="M645,251 L655,251 L655,185 L615,185" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<text x="660" y="50" font-size="12" text-anchor="start" font-weight="normal" fill="#5a6472">one row of B, broadcast down</text>
+<text x="660" y="124" font-size="12" text-anchor="start" font-weight="normal" fill="#5a6472">one element of A, broadcast across</text>
+<text x="660" y="189" font-size="12" text-anchor="start" font-weight="normal" fill="#5a6472">fp32 add (feedback loop)</text>
+<text x="660" y="255" font-size="12" text-anchor="start" font-weight="normal" fill="#5a6472">accumulator row i (fp32 registers)</text>
+<text x="450" y="305" font-size="12" text-anchor="middle" font-weight="normal" fill="#5a6472" font-style="italic">MXU_ROWS output rows i at once, then the next MXU_ROWS rows, then k + 1</text>
+</svg>

@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="260" viewBox="0 0 840 260" font-family="Helvetica, Arial, sans-serif">
+<title>Host CPU, link and accelerator</title>
+<defs>
+  <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+    <path d="M0,0 L10,5 L0,10 z" fill="#2f3b4a"/>
+  </marker>
+  <marker id="as" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+    <path d="M10,0 L0,5 L10,10 z" fill="#2f3b4a"/>
+  </marker>
+</defs>
+<rect x="0" y="0" width="840" height="260" rx="10" fill="#ffffff"/>
+<rect x="20" y="30" width="230" height="110" rx="6" fill="#eceff3" stroke="#5a6472" stroke-width="1.4"/>
+<text x="135.0" y="64.0" font-size="13" text-anchor="middle" font-weight="bold" fill="#1f2933">Host CPU</text>
+<text x="135.0" y="81.0" font-size="13" text-anchor="middle" font-weight="normal" fill="#1f2933">RV64G, 2 GHz</text>
+<text x="135.0" y="98.0" font-size="13" text-anchor="middle" font-weight="normal" fill="#1f2933">time + energy:</text>
+<text x="135.0" y="115.0" font-size="13" text-anchor="middle" font-weight="normal" fill="#1f2933">sim/csrc/host_model.c</text>
+<rect x="590" y="30" width="230" height="110" rx="6" fill="#e3eefc" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="705.0" y="64.0" font-size="13" text-anchor="middle" font-weight="bold" fill="#1f2933">Accelerator</text>
+<text x="705.0" y="81.0" font-size="13" text-anchor="middle" font-weight="normal" fill="#1f2933">clock: CLK_PERIOD</text>
+<text x="705.0" y="98.0" font-size="13" text-anchor="middle" font-weight="normal" fill="#1f2933">time: RTL simulation</text>
+<text x="705.0" y="115.0" font-size="13" text-anchor="middle" font-weight="normal" fill="#1f2933">power: make synth</text>
+<path d="M250,72 L590,72" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)" marker-start="url(#as)"/>
+<text x="420.0" y="65.0" font-size="12" text-anchor="middle" font-weight="normal" fill="#5a6472">link: LINK_DELAY_NS each way</text>
+<text x="420" y="95" font-size="12" text-anchor="middle" font-weight="normal" fill="#5a6472">host registers (AXI4-Lite), irq</text>
+<rect x="320" y="190" width="200" height="50" rx="6" fill="#e3f3e6" stroke="#3a8a4a" stroke-width="1.4"/>
+<text x="420.0" y="211.0" font-size="13" text-anchor="middle" font-weight="bold" fill="#1f2933">HBM</text>
+<text x="420.0" y="228.0" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">shared memory</text>
+<path d="M135,140 L135,215 L320,215" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)" marker-start="url(#as)"/>
+<path d="M705,140 L705,215 L520,215" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)" marker-start="url(#as)"/>
+<text x="140" y="232" font-size="11" text-anchor="start" font-weight="normal" fill="#5a6472">loads / stores (cache model)</text>
+<text x="700" y="232" font-size="11" text-anchor="end" font-weight="normal" fill="#5a6472">AXI4</text>
+</svg>

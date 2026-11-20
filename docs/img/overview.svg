@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="860" height="320" viewBox="0 0 860 320" font-family="Helvetica, Arial, sans-serif">
+<title>The system: host CPU, accelerator, HBM</title>
+<defs>
+  <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+    <path d="M0,0 L10,5 L0,10 z" fill="#2f3b4a"/>
+  </marker>
+  <marker id="as" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+    <path d="M10,0 L0,5 L10,10 z" fill="#2f3b4a"/>
+  </marker>
+</defs>
+<rect x="0" y="0" width="860" height="320" rx="10" fill="#ffffff"/>
+<rect x="20" y="85" width="180" height="120" rx="6" fill="#eceff3" stroke="#5a6472" stroke-width="1.4"/>
+<text x="110.0" y="124.0" font-size="13" text-anchor="middle" font-weight="bold" fill="#1f2933">Host CPU</text>
+<text x="110.0" y="141.0" font-size="13" text-anchor="middle" font-weight="normal" fill="#1f2933">RV64G, 2 GHz</text>
+<text x="110.0" y="158.0" font-size="13" text-anchor="middle" font-weight="normal" fill="#1f2933">main.c: prepare data,</text>
+<text x="110.0" y="175.0" font-size="13" text-anchor="middle" font-weight="normal" fill="#1f2933">launch, check results</text>
+<rect x="290" y="25" width="320" height="245" rx="8" fill="#f7faff" stroke="#3b6fb6" stroke-width="1.6"/>
+<text x="302" y="45" font-size="13" text-anchor="start" font-weight="bold" fill="#1f2933">accel_top (your design)</text>
+<rect x="305" y="55" width="290" height="34" rx="6" fill="#e3eefc" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="450.0" y="76.5" font-size="13" text-anchor="middle" font-weight="normal" fill="#1f2933">host registers (AXI4-Lite)</text>
+<rect x="319" y="119" width="270" height="145" rx="6" fill="#e3eefc" stroke="#3b6fb6" stroke-width="1.2"/>
+<rect x="312" y="112" width="270" height="145" rx="6" fill="#e3eefc" stroke="#3b6fb6" stroke-width="1.2"/>
+<rect x="305" y="105" width="270" height="145" rx="6" fill="#e3eefc" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="440" y="126" font-size="13" text-anchor="middle" font-weight="bold" fill="#1f2933">compute core 0 .. NUM_CORES-1</text>
+<rect x="315" y="138" width="122" height="44" rx="6" fill="#d4e4fa" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="376.0" y="164.5" font-size="13" text-anchor="middle" font-weight="normal" fill="#1f2933">control core</text>
+<rect x="443" y="138" width="122" height="44" rx="6" fill="#d4e4fa" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="504.0" y="164.5" font-size="13" text-anchor="middle" font-weight="normal" fill="#1f2933">VPU (VLEN)</text>
+<rect x="315" y="192" width="122" height="44" rx="6" fill="#d4e4fa" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="376.0" y="218.5" font-size="13" text-anchor="middle" font-weight="normal" fill="#1f2933">MXU (MAT_DIM²)</text>
+<rect x="443" y="192" width="122" height="44" rx="6" fill="#e3f3e6" stroke="#3a8a4a" stroke-width="1.4"/>
+<text x="504.0" y="218.5" font-size="13" text-anchor="middle" font-weight="normal" fill="#1f2933">scratchpad SRAM</text>
+<rect x="710" y="110" width="130" height="75" rx="6" fill="#e3f3e6" stroke="#3a8a4a" stroke-width="1.4"/>
+<text x="775.0" y="143.5" font-size="13" text-anchor="middle" font-weight="bold" fill="#1f2933">HBM</text>
+<text x="775.0" y="160.5" font-size="13" text-anchor="middle" font-weight="normal" fill="#1f2933">kernels + data</text>
+<path d="M200,112 L290,112" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<text x="245.0" y="105.0" font-size="12" text-anchor="middle" font-weight="normal" fill="#5a6472">AXI4-Lite</text>
+<path d="M290,170 L200,170" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<text x="245.0" y="163.0" font-size="12" text-anchor="middle" font-weight="normal" fill="#5a6472">irq</text>
+<path d="M610,147 L710,147" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<text x="660.0" y="140.0" font-size="12" text-anchor="middle" font-weight="normal" fill="#5a6472">AXI4</text>
+<path d="M110,205 L110,300 L775,300 L775,185" fill="none" stroke="#2f3b4a" stroke-width="1.5" stroke-dasharray="6 4" marker-end="url(#ah)" marker-start="url(#as)"/>
+<text x="442" y="293" font-size="12" text-anchor="middle" font-weight="normal" fill="#5a6472">shared memory: the host CPU reads and writes HBM directly</text>
+</svg>

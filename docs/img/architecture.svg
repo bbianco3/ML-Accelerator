@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="890" height="650" viewBox="0 0 890 650" font-family="Helvetica, Arial, sans-serif">
+<title>Block diagram of the reference design</title>
+<defs>
+  <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+    <path d="M0,0 L10,5 L0,10 z" fill="#2f3b4a"/>
+  </marker>
+  <marker id="as" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+    <path d="M10,0 L0,5 L10,10 z" fill="#2f3b4a"/>
+  </marker>
+</defs>
+<rect x="0" y="0" width="890" height="650" rx="10" fill="#ffffff"/>
+<rect x="10" y="55" width="90" height="70" rx="6" fill="#eceff3" stroke="#5a6472" stroke-width="1.4"/>
+<text x="55.0" y="94.5" font-size="13" text-anchor="middle" font-weight="bold" fill="#1f2933">Host CPU</text>
+<rect x="170" y="20" width="700" height="525" rx="8" fill="#f7faff" stroke="#3b6fb6" stroke-width="1.6"/>
+<text x="182" y="40" font-size="13" text-anchor="start" font-weight="bold" fill="#1f2933">accel_top</text>
+<rect x="190" y="52" width="660" height="52" rx="6" fill="#e3eefc" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="520.0" y="74.0" font-size="13" text-anchor="middle" font-weight="bold" fill="#1f2933">accel_csr: host registers</text>
+<text x="520.0" y="91.0" font-size="13" text-anchor="middle" font-weight="normal" fill="#1f2933">START_PC, ARG0..7, CORES, CTRL, STATUS; run status of all cores; irq</text>
+<path d="M100,73 L190,73" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<text x="104" y="66" font-size="12" text-anchor="start" font-weight="normal" fill="#5a6472">AXI4-Lite</text>
+<path d="M190,100 L100,100" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<text x="104" y="117" font-size="12" text-anchor="start" font-weight="normal" fill="#5a6472">irq</text>
+<rect x="190" y="140" width="430" height="175" rx="8" fill="#e3eefc" stroke="#3b6fb6" stroke-width="1.6"/>
+<text x="202" y="160" font-size="13" text-anchor="start" font-weight="bold" fill="#1f2933">core 0: accel_core (control core)</text>
+<text x="405" y="178" font-size="12" text-anchor="middle" font-weight="normal" fill="#5a6472">fetch → execute state machine, x0..x31, pc, vl</text>
+<rect x="205" y="195" width="125" height="100" rx="6" fill="#d4e4fa" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="267.5" y="232.5" font-size="13" text-anchor="middle" font-weight="bold" fill="#1f2933">I-cache</text>
+<text x="267.5" y="249.5" font-size="13" text-anchor="middle" font-weight="normal" fill="#1f2933">accel_icache</text>
+<text x="267.5" y="266.5" font-size="13" text-anchor="middle" font-weight="normal" fill="#1f2933">kernel code</text>
+<rect x="343" y="195" width="125" height="100" rx="6" fill="#d4e4fa" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="405.5" y="232.5" font-size="13" text-anchor="middle" font-weight="bold" fill="#1f2933">vector unit</text>
+<text x="405.5" y="249.5" font-size="13" text-anchor="middle" font-weight="normal" fill="#1f2933">accel_vpu</text>
+<text x="405.5" y="266.5" font-size="13" text-anchor="middle" font-weight="normal" fill="#1f2933">v0..v31</text>
+<rect x="481" y="195" width="125" height="100" rx="6" fill="#d4e4fa" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="543.5" y="232.5" font-size="13" text-anchor="middle" font-weight="bold" fill="#1f2933">matrix unit</text>
+<text x="543.5" y="249.5" font-size="13" text-anchor="middle" font-weight="normal" fill="#1f2933">accel_mxu</text>
+<text x="543.5" y="266.5" font-size="13" text-anchor="middle" font-weight="normal" fill="#1f2933">tr*, acc*</text>
+<path d="M300,104 L300,140" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<text x="307" y="126" font-size="12" text-anchor="start" font-weight="normal" fill="#5a6472">start</text>
+<path d="M560,140 L560,104" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<text x="567" y="126" font-size="12" text-anchor="start" font-weight="normal" fill="#5a6472">done / error</text>
+<rect x="190" y="355" width="430" height="82" rx="6" fill="#e3f3e6" stroke="#3a8a4a" stroke-width="1.4"/>
+<text x="405.0" y="383.5" font-size="13" text-anchor="middle" font-weight="bold" fill="#1f2933">accel_spad: address router</text>
+<text x="405.0" y="400.5" font-size="13" text-anchor="middle" font-weight="normal" fill="#1f2933">0x2000_0000 …  →  accel_sram_1rw (scratchpad SRAM)</text>
+<text x="405.0" y="417.5" font-size="13" text-anchor="middle" font-weight="normal" fill="#1f2933">anything else  →  accel_axi_master (AXI4 bursts)</text>
+<path d="M405,315 L405,355" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)" marker-start="url(#as)"/>
+<text x="413" y="340" font-size="12" text-anchor="start" font-weight="normal" fill="#5a6472">requests / responses</text>
+<rect x="702" y="152" width="150" height="100" rx="6" fill="#e3eefc" stroke="#3b6fb6" stroke-width="1.2"/>
+<rect x="696" y="146" width="150" height="100" rx="6" fill="#e3eefc" stroke="#3b6fb6" stroke-width="1.2"/>
+<rect x="690" y="140" width="150" height="100" rx="6" fill="#e3eefc" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="765.0" y="169.0" font-size="13" text-anchor="middle" font-weight="bold" fill="#1f2933">core 1 .. N-1</text>
+<text x="765.0" y="186.0" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">same as core 0:</text>
+<text x="765.0" y="203.0" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">control core, units,</text>
+<text x="765.0" y="220.0" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">scratchpad, AXI master</text>
+<path d="M770,104 L770,140" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<rect x="655" y="275" width="120" height="52" rx="6" fill="#fdf0dc" stroke="#b87a1e" stroke-width="1.4"/>
+<text x="715.0" y="297.0" font-size="13" text-anchor="middle" font-weight="bold" fill="#1f2933">barrier /</text>
+<text x="715.0" y="314.0" font-size="13" text-anchor="middle" font-weight="normal" fill="#1f2933">abort</text>
+<path d="M620,300 L655,300" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)" marker-start="url(#as)"/>
+<path d="M715,252 L715,275" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)" marker-start="url(#as)"/>
+<rect x="190" y="470" width="660" height="46" rx="6" fill="#e3eefc" stroke="#3b6fb6" stroke-width="1.4"/>
+<text x="520.0" y="489.0" font-size="13" text-anchor="middle" font-weight="bold" fill="#1f2933">accel_axi_arbiter</text>
+<text x="520.0" y="506.0" font-size="12" text-anchor="middle" font-weight="normal" fill="#1f2933">N → 1, round robin; responses routed back by AXI ID</text>
+<path d="M405,437 L405,470" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<text x="413" y="458" font-size="12" text-anchor="start" font-weight="normal" fill="#5a6472">AXI4, ID = core index</text>
+<path d="M830,252 L830,470" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<text x="822" y="420" font-size="12" text-anchor="end" font-weight="normal" fill="#5a6472">AXI4</text>
+<rect x="430" y="585" width="180" height="48" rx="6" fill="#e3f3e6" stroke="#3a8a4a" stroke-width="1.4"/>
+<text x="520.0" y="613.5" font-size="13" text-anchor="middle" font-weight="bold" fill="#1f2933">HBM</text>
+<path d="M520,516 L520,585" fill="none" stroke="#2f3b4a" stroke-width="1.5" marker-end="url(#ah)"/>
+<text x="528" y="567" font-size="12" text-anchor="start" font-weight="normal" fill="#5a6472">AXI4 (HBM_DATA_W bits)</text>
+</svg>

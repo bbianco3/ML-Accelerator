@@ -5,13 +5,7 @@ area and clock you cannot change. What you can change is how much work it
 does. Moving work from the host CPU to the accelerator (or back) changes both run
 time and energy, and this model is what makes that visible.
 
-```
-  host CPU (2 GHz, RV64G)  <---- link: LINK_DELAY_NS each way ---->  accelerator (CLK_PERIOD)
-  time + energy from                registers (AXI4-Lite), irq       time from RTL simulation,
-  sim/csrc/host_model.c                                              power from `make synth`
-          |                                                                   |
-          +------------------------- HBM (shared memory) ---------------------+
-```
+![The host CPU and the accelerator are connected by a link with a fixed delay and share HBM](img/platform.svg)
 
 ## Region of interest
 

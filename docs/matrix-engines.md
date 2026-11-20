@@ -44,17 +44,7 @@ for data.
 A row of MAC units per output row, with operands broadcast and the sums
 kept in a register tile. Each cycle handles one `k` for `R` output rows:
 
-```
-            B[k][0]   B[k][1]  ...  B[k][T-1]        one row of B, broadcast down
-               |         |             |
- A[i][k] --->  x         x     ...     x             one element of A per output row,
-               |         |             |             broadcast across the row
-               +         +     ...     +
-               ^|        ^|            ^|
-          acc[i][0] acc[i][1] ... acc[i][T-1]        accumulator row i (fp32 registers)
-
- repeated for R output rows i at once; then the next R rows; then k + 1
-```
+![Tiled accumulator: a row of B is broadcast down, one element of A is broadcast across, each column multiplies and adds into its own fp32 accumulator](img/tiled-accumulator.svg)
 
 ```
 for k in 0 .. T-1:                       # outer loop: fixes the summation order
@@ -89,17 +79,7 @@ Turn the loops inside out: finish one output element at a time. One engine
 takes a whole row of A and a whole column of B, multiplies them pairwise
 and adds the `T` products in a tree:
 
-```
- A[i][0] B[0][j]   A[i][1] B[1][j]   A[i][2] B[2][j]   A[i][3] B[3][j]     (T = 4)
-      \   /             \   /             \   /             \   /
-        x                 x                 x                 x           T multipliers
-         \               /                   \               /
-          \--- + ------/                      \--- + ------/              adder tree,
-                \                                  /                      log2(T) levels
-                 \------------- + ---------------/
-                                |
-                    C[i][j] = C[i][j] + dot                               one more add
-```
+![Dot-product engine: T multipliers feed an adder tree of log2(T) levels; the result is added to C[i][j]](img/dot-product.svg)
 
 ```
 for i in 0 .. T-1:
@@ -145,20 +125,7 @@ PE per cycle, like a bucket chain; nothing is broadcast.
 
 ### Output-stationary (each PE owns one output element)
 
-```
-              B[*][0]      B[*][1]      B[*][2]            columns of B enter at the top,
-                 |            |            |               column j delayed by j cycles
-                 v            v            v
- A[0][*] --> [PE 0,0] --> [PE 0,1] --> [PE 0,2] -->        rows of A enter at the left,
-                 |            |            |               row i delayed by i cycles
-                 v            v            v
- A[1][*] --> [PE 1,0] --> [PE 1,1] --> [PE 1,2] -->
-                 |            |            |
-                 v            v            v
- A[2][*] --> [PE 2,0] --> [PE 2,1] --> [PE 2,2] -->
-
- each PE, every cycle:   acc += a_in * b_in;   a_out <= a_in;   b_out <= b_in
-```
+![Output-stationary systolic array: columns of B enter from the top and rows of A from the left, each delayed by its index; each processing element keeps one element of C](img/systolic-os.svg)
 
 `A[i][k]` enters row `i` at cycle `i + k` and `B[k][j]` enters column `j`
 at cycle `j + k`, so they meet in PE `(i, j)` at cycle `i + j + k`: exactly
@@ -167,23 +134,7 @@ the pair that belongs to `C[i][j]`, in the order `k = 0, 1, ...`. After
 
 ### Weight-stationary (B stays put, partial sums flow)
 
-```
-                 0            0            0               partial sums enter at the top as 0
-                 |            |            |               (or as the old C, to accumulate)
-                 v            v            v
- A[*][0] --> [ B[0][0] ] --> [ B[0][1] ] --> [ B[0][2] ]   row k of the grid holds row k of B;
-                 |            |            |               element k of each A row enters row k
-                 v            v            v
- A[*][1] --> [ B[1][0] ] --> [ B[1][1] ] --> [ B[1][2] ]
-                 |            |            |
-                 v            v            v
- A[*][2] --> [ B[2][0] ] --> [ B[2][1] ] --> [ B[2][2] ]
-                 |            |            |
-                 v            v            v
-              C[*][0]      C[*][1]      C[*][2]            one finished row of C per cycle
-
- each PE, every cycle:   sum_out <= sum_in + a_in * b;   a_out <= a_in
-```
+![Weight-stationary systolic array: each processing element holds one element of B; partial sums flow down and finished rows of C leave at the bottom](img/systolic-ws.svg)
 
 B is loaded into the PEs once. Rows of A then stream through, one per
 cycle, and a finished row of C drops out of the bottom every cycle. This is

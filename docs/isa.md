@@ -100,10 +100,7 @@ the data goes; the address does.
 | `vle16 vd, imm(rs1)` | I | 1 | `vd[i] = mem16[x[rs1] + imm + 2i]` for `i < vl` |
 | `vse16 vs3, imm(rs1)` | S | 2 | `mem16[x[rs1] + imm + 2i] = vs3[i]` for `i < vl` |
 
-```
- I-type: | imm[11:0] | rs1 | funct3 | rd/vd | 0101011 |
- S-type: | imm[11:5] | vs3 | rs1 | funct3 | imm[4:0] | 0101011 |
-```
+![Instruction formats of custom-1: I-type for vsetvl and vle16, S-type for vse16](img/isa-vmem.svg)
 
 The effective address of `vle16`/`vse16` **must be a multiple of VLEN/8**
 (else `MISALIGNED`). A `vle16` always reads the full VLEN/8 bytes from memory
@@ -126,11 +123,10 @@ but writes only elements `< vl`. A `vse16` writes only the bytes of elements
 
 R-type, `funct7` = operation, `funct3` = operand form:
 
-```
- | funct7 | rs2 = vs2 | rs1 = vs1 or x-reg | funct3 | rd = vd | 0001011 |
- funct3 = 0 (.vv): op1 = vs1
- funct3 = 4 (.vf): op1 = broadcast(x[rs1][15:0])   (a bf16 bit pattern in a scalar register)
-```
+![R-type format of custom-0: funct7, rs2 = vs2, rs1 = vs1 or a scalar register, funct3, rd = vd, opcode 0001011](img/isa-varith.svg)
+
+* `funct3 = 0` (`.vv`): op1 = `vs1`
+* `funct3 = 4` (`.vf`): op1 = broadcast(`x[rs1][15:0]`), a bf16 bit pattern in a scalar register
 
 All operations act on elements `i < vl`. Elements `i >= vl` of `vd` are
 unchanged. Arithmetic follows [numerics.md](numerics.md).
@@ -158,9 +154,7 @@ zero vector, and a dot product is `vfmul` followed by `vfredsum`.
 R-type, `funct7` = operation, `funct3` = memory layout (`0` normal, `1`
 transposed `.t`):
 
-```
- | funct7 | rs2 | rs1 | funct3 | rd | 1011011 |
-```
+![R-type format of custom-2: funct7, rs2, rs1, funct3, rd, opcode 1011011](img/isa-matrix.svg)
 
 | funct7 | Assembly | Semantics |
 |---|---|---|
