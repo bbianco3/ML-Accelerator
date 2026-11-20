@@ -16,8 +16,8 @@
 //   B       : goes to the master whose index equals BID.
 //
 // Reads and writes are arbitrated independently, so one core can read while
-// another writes. Each master has at most one transaction in flight, so the
-// HBM sees at most N at once.
+// another writes. A master may have several reads in flight (its responses
+// come back in order, all with its ID), but only one write.
 //-----------------------------------------------------------------------------
 
 module accel_axi_arbiter

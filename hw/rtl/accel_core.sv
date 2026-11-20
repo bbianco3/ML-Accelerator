@@ -16,9 +16,9 @@
 //                                                 |                    VPU pipeline, 3 cycles)
 //                                                 +--> VRED -> FETCH (vfredsum/vfredmax:
 //                                                 |                   2 cycles per element)
-//                                                 +--> MROW <-> MROW_WAIT -> FETCH
+//                                                 +--> MROW -> FETCH
 //                                                 |       (mld/mst/msta: MAT_DIM rows,
-//                                                 |        one memory access each)
+//                                                 |        requested back to back)
 //                                                 +--> MXU_WAIT -> FETCH (mmacc)
 //                                                 +--> HCPY_RD <-> HCPY_WR -> FETCH (hcpy:
 //                                                 |       copy a run of halfwords, one
@@ -117,7 +117,7 @@ module accel_core
   //===========================================================================
   typedef enum logic [3:0] {
     S_IDLE, S_FETCH, S_FETCH_WAIT, S_EXEC, S_MEM, S_MEM_WAIT, S_VRED,
-    S_MROW, S_MROW_WAIT, S_MXU_WAIT, S_BARRIER, S_VWAIT,
+    S_MROW, S_MROW_WAIT /* unused */, S_MXU_WAIT, S_BARRIER, S_VWAIT,
     S_HCPY_RD, S_HCPY_RD_WAIT, S_HCPY_WR, S_HCPY_WR_WAIT
   } state_e;
 
@@ -128,8 +128,14 @@ module accel_core
   logic [VL_W-1:0] vl;
   logic [7:0]      ncores_q;
   logic [63:0]     cycle_cnt, instret_cnt;
-  logic [ROW_IDX_W-1:0] mrow;       // mld/mst/msta: which tile row is moving
+  logic [ROW_IDX_W-1:0] mrow;       // mld/mst/msta: the next tile row to request
   logic [31:0]     maddr;           // ... and its memory address
+  logic [ROW_IDX_W-1:0] mrow_rx;    // the row the next response belongs to
+  logic [31:0]     maddr_rx;        // ... and its address (for the in-beat offset)
+  logic [ROW_IDX_W:0]   mr_iss;     // rows requested so far (0 .. MAT_DIM)
+  logic [ROW_IDX_W:0]   mr_out;     // requests sent, response not back yet
+  logic            mr_tgt;          // where those go: 1 = scratchpad, 0 = HBM
+  logic            mr_err;          // a row came back with a bus error
 
   assign busy       = (state != S_IDLE);
   assign at_barrier = (state == S_BARRIER);
@@ -253,7 +259,7 @@ module accel_core
     .clk, .rst_n,
     .wr_en   (mxu_wr_en),               // mld: one row per memory response
     .wr_tr   (rd[1:0]),
-    .wr_row  (mrow),
+    .wr_row  (mrow_rx),                 // rows are written as they come back
     .wr_col  (funct3 == MLAYOUT_COL),
     .wr_data (mxu_wr_data),
     .rd_acc  (funct7 == MOP_STA),       // mst reads a tile, msta an accumulator
@@ -636,6 +642,26 @@ module accel_core
   end
 
   // Who uses the memory port: FETCH (pc), MEM (load/store) or MROW (tile row)
+  //---------------------------------------------------------------------------
+  // mld / mst / msta: rows are requested back to back
+  //---------------------------------------------------------------------------
+  // The next row is requested without waiting for the previous response, as
+  // long as it goes to the same place (scratchpad or HBM) as the rows still
+  // in flight: each of those answers in order, so responses come back in row
+  // order (mrow_rx). The AXI master keeps several reads in flight, so the
+  // ~45-cycle HBM latency is paid about once per tile instead of once per row
+  // (HBM writes are still one at a time: the AXI master holds req_ready low).
+  logic                 mr_new_spad;      // the row about to be requested is in the scratchpad
+  logic                 mr_issue, mr_hs, mr_rsp;
+  logic [ROW_IDX_W:0]   mr_out_nxt;
+
+  assign mr_new_spad = (maddr[31:SPAD_WINDOW_W] == SPAD_BASE[31:SPAD_WINDOW_W]);
+  assign mr_issue    = (state == S_MROW) && (mr_iss != (ROW_IDX_W+1)'(MAT_DIM)) && !mr_err
+                       && ((mr_out == '0) || (mr_new_spad == mr_tgt));
+  assign mr_hs       = mr_issue && mem_req_ready;
+  assign mr_rsp      = (state == S_MROW) && mem_resp_valid;
+  assign mr_out_nxt  = mr_out + (ROW_IDX_W+1)'(mr_hs) - (ROW_IDX_W+1)'(mr_rsp);
+
   always_comb begin
     mem_req_valid = 1'b0;
     mem_req_write = 1'b0;
@@ -666,7 +692,7 @@ module accel_core
         mem_req_wstrb = cp_wstrb;
       end
       S_MROW: begin
-        mem_req_valid = 1'b1;
+        mem_req_valid = mr_issue;
         mem_req_write = (funct7 != MOP_LD);          // mst / msta
         mem_req_addr  = maddr;
         mem_req_wdata = HBM_DATA_W'(mxu_rd_data) << {moff, 3'b000};
@@ -680,9 +706,9 @@ module accel_core
 
   // mld: the row from memory goes into the MXU
   logic [HBM_DATA_W-1:0] mrow_shifted;
-  assign mrow_shifted = mem_resp_rdata >> {moff, 3'b000};
+  assign mrow_shifted = mem_resp_rdata >> {maddr_rx[OFF_W-1:0], 3'b000};
   assign mxu_wr_data  = mrow_shifted[MAT_DIM*16-1:0];
-  assign mxu_wr_en    = (state == S_MROW_WAIT) && mem_resp_valid && !mem_resp_err
+  assign mxu_wr_en    = (state == S_MROW) && mem_resp_valid && !mem_resp_err
                         && (funct7 == MOP_LD);
 
   // Load result for the scalar register file
@@ -742,8 +768,14 @@ module accel_core
           stop_insn = insn;
         end
       end
-      S_MEM_WAIT, S_MROW_WAIT, S_HCPY_RD_WAIT, S_HCPY_WR_WAIT:
+      S_MEM_WAIT, S_HCPY_RD_WAIT, S_HCPY_WR_WAIT:
         if (mem_resp_valid && mem_resp_err) begin
+        stop_now = 1'b1; stop_cause = ERR_BUS; stop_insn = insn;
+      end
+      // a bad row: stop once the rows still in flight have come back, so no
+      // stray response reaches the next kernel
+      S_MROW:
+        if (((mem_resp_valid && mem_resp_err) || mr_err) && mr_out_nxt == '0) begin
         stop_now = 1'b1; stop_cause = ERR_BUS; stop_insn = insn;
       end
       default: ;
@@ -766,6 +798,12 @@ module accel_core
       end_insn    <= '0;
       mrow        <= '0;
       maddr       <= '0;
+      mrow_rx     <= '0;
+      maddr_rx    <= '0;
+      mr_iss      <= '0;
+      mr_out      <= '0;
+      mr_tgt      <= 1'b0;
+      mr_err      <= 1'b0;
       ls_addr     <= '0;
       ls_write    <= 1'b0;
       ls_data     <= '0;
@@ -835,9 +873,14 @@ module accel_core
           else if (ex_vred)
             state <= S_VRED;                        // VPU reduction started
           else if (ex_mrow) begin
-            mrow  <= '0;                            // start at row 0, x[rbase]
-            maddr <= rs1v;
-            state <= S_MROW;
+            mrow     <= '0;                         // start at row 0, x[rbase]
+            maddr    <= rs1v;
+            mrow_rx  <= '0;
+            maddr_rx <= rs1v;
+            mr_iss   <= '0;
+            mr_out   <= '0;
+            mr_err   <= 1'b0;
+            state    <= S_MROW;
           end
           else if (ex_mmacc)
             state <= S_MXU_WAIT;                    // MXU array started
@@ -893,20 +936,24 @@ module accel_core
           end
         end
 
-        // ---- mld / mst / msta: one tile row per memory access ----
-        S_MROW: if (mem_req_ready) state <= S_MROW_WAIT;
-
-        S_MROW_WAIT: begin
-          if (mem_resp_valid) begin
+        // ---- mld / mst / msta: request rows back to back, collect them in order ----
+        S_MROW: begin
+          mr_out <= mr_out_nxt;
+          if (mr_hs) begin                          // a row request was taken
+            mr_iss <= mr_iss + (ROW_IDX_W+1)'(1);
+            mrow   <= mrow + ROW_IDX_W'(1);
+            maddr  <= maddr + rs2v;                 // + x[rstride]
+            mr_tgt <= mr_new_spad;
+          end
+          if (mr_rsp) begin                         // a row came back
             // (mld rows are written into the MXU by mxu_wr_en)
-            if (mrow == ROW_IDX_W'(MAT_DIM - 1)) begin   // that was the last row
-              pc          <= pc + 32'd4;
+            if (mem_resp_err) mr_err <= 1'b1;      // (stop logic ends it)
+            mrow_rx  <= mrow_rx + ROW_IDX_W'(1);
+            maddr_rx <= maddr_rx + rs2v;
+            if (mrow_rx == ROW_IDX_W'(MAT_DIM - 1) && !mem_resp_err && !mr_err) begin
+              pc          <= pc + 32'd4;            // that was the last row
               instret_cnt <= instret_cnt + 64'd1;
               state       <= S_FETCH;
-            end else begin
-              mrow  <= mrow + ROW_IDX_W'(1);
-              maddr <= maddr + rs2v;                    // + x[rstride]
-              state <= S_MROW;
             end
           end
         end

@@ -16,8 +16,9 @@
 // makes (a byte up to a whole vector or tile row) is one SRAM access. The
 // byte strobes become the SRAM's per-bit write mask.
 //
-// Like the AXI master, only one request is in flight: the core waits for
-// the response before it sends the next request.
+// A scratchpad request is answered in the next cycle, so the core may send
+// one per cycle. The core never has scratchpad and HBM requests in flight at
+// the same time (their responses could pass each other).
 //-----------------------------------------------------------------------------
 
 module accel_spad

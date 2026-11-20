@@ -230,7 +230,8 @@ With the default parameters and the default HBM model latency (40 cycles):
 | `vle16` / `vse16` / `lw` / `sw` | ~45 (latency + 5) |
 | element-wise vector op | 4 |
 | reduction | vl + 4 |
-| `mld` / `mst` / `msta` | MAT_DIM x ~45 (HBM), MAT_DIM x 2 (scratchpad) |
+| `mld` | ~45 + 2 x MAT_DIM (HBM: rows requested back to back), MAT_DIM + 2 (scratchpad) |
+| `mst` / `msta` | MAT_DIM x ~45 (HBM, one write at a time), MAT_DIM + 2 (scratchpad) |
 | scalar / vector load or store to the scratchpad | 4 |
 | `mmacc` | MAT_DIM*MAT_DIM/MXU_ROWS + 3 |
 | `barrier` | 1 after the last core arrives |
