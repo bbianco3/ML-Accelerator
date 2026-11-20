@@ -1,4 +1,5 @@
-// copy -- the hcpy instruction: x[rs2] bf16 elements from x[rs1] to x[rd].
+// copy -- the hcpy instruction: x[rs2] bf16 elements from x[rs1] to x[rd],
+// and hcpy2d: several such runs, a source stride apart, back to back.
 //
 // Every run length in a list, at every source and destination offset inside
 // a bus beat, HBM -> HBM; then the same through the scratchpad (HBM -> spad,
@@ -9,11 +10,11 @@
 #include "bf16.h"
 #include "runtime.h"
 
-extern void copy_jobs(void), copy_one(void);
-extern char pc_copy_one[];
+extern void copy_jobs(void), copy_one(void), copy2d_jobs(void), copy2d_one(void);
+extern char pc_copy_one[], pc_copy2d_one[];
 
 #define SLOT     192u                 // destination slot (bytes)
-#define SRC_LEN  512u                 // shared source buffer (bytes)
+#define SRC_LEN  1024u                // shared source buffer (bytes)
 #define MAX_JOBS 6000u
 
 typedef struct { uint32_t dst, src, n; } job_t;
@@ -106,6 +107,65 @@ int main(void) {
     errors += bad;
   } else {
     printf("scratchpad too small for this test: skipped\n");
+  }
+
+  // ---- 2b. hcpy2d: rows x run x stride, every source / destination offset ----
+  {
+    static const uint32_t shp[][3] = {   // rows, run, stride (bytes)
+        {1, 5, 0}, {2, 1, 2}, {5, 5, 64}, {5, 30, 168}, {3, 17, 34}, {4, 16, 96}, {2, 33, 70}};
+    const uint32_t S2 = 384;            // slot: up to 5*30*2 = 300 bytes + offset
+    uint32_t n2 = 7 * (beat / 2) * (beat / 2);
+    uint8_t *d2 = hbm_alloc(n2 * S2, HBM_ALIGN);
+    nj = 0;
+    s = 0;
+    for (uint32_t c = 0; c < 7; c++)
+      for (uint32_t so = 0; so < beat; so += 2)
+        for (uint32_t d = 0; d < beat; d += 2, s++) {
+          for (uint32_t i = 0; i < S2; i++) d2[s * S2 + i] = pattern(s, i);
+          uint32_t src = (uint32_t)(uintptr_t)(src_hbm + so);
+          if (cfg.spad_bytes >= SRC_LEN && (s & 1)) src = SPAD_BASE + so;  // staged below
+          jobs[nj++] = (job_t){(uint32_t)(uintptr_t)(d2 + s * S2 + d), src,
+                               (shp[c][2] << 16) | (shp[c][0] << 8) | shp[c][1]};
+        }
+    if (cfg.spad_bytes >= SRC_LEN) {     // the scratchpad copy of the source, with hcpy
+      uint32_t a[] = {SPAD_BASE, (uint32_t)(uintptr_t)src_hbm, SRC_LEN / 2};
+      accel_run(copy_one, a, 3);
+    }
+    uint32_t args3[] = {(uint32_t)(uintptr_t)jobs, nj};
+    st = accel_run(copy2d_jobs, args3, 2);
+    if (st & ACCEL_STATUS_ERROR) { printf("hcpy2d kernel faulted\n"); return 1; }
+    bad = 0;
+    s = 0;
+    for (uint32_t c = 0; c < 7 && !bad; c++)
+      for (uint32_t so = 0; so < beat && !bad; so += 2)
+        for (uint32_t d = 0; d < beat && !bad; d += 2, s++) {
+          const uint32_t rows = shp[c][0], rb = 2 * shp[c][1], stride = shp[c][2];
+          const uint8_t *got = d2 + s * S2;
+          for (uint32_t i = 0; i < S2; i++) {
+            uint8_t exp = pattern(s, i);
+            if (i >= d && i < d + rows * rb) {
+              uint32_t k = i - d, r = k / rb;
+              exp = src_hbm[so + r * stride + k % rb];
+            }
+            if (got[i] != exp) {
+              printf("hcpy2d: rows=%u run=%u stride=%u src_off=%u dst_off=%u: byte %u is 0x%02x, "
+                     "expected 0x%02x\n", rows, rb / 2, stride, so, d, i, got[i], exp);
+              bad = 1;
+              break;
+            }
+          }
+        }
+    printf("hcpy2d: %u copies, %s\n", n2, bad ? "FAILED" : "ok");
+    errors += bad;
+
+    uint32_t a[] = {(uint32_t)(uintptr_t)d2, (uint32_t)(uintptr_t)src_hbm, (3u << 16) | (2u << 8) | 4u};
+    accel_launch(copy2d_one, a, 3);
+    st = accel_wait();
+    int ok = (st & ACCEL_STATUS_ERROR) && ACCEL_STATUS_CAUSE(st) == ACCEL_ERR_MISALIGNED &&
+             accel_rd(ACCEL_ERR_PC) == (uint32_t)(uintptr_t)pc_copy2d_one;
+    printf("hcpy2d odd stride: %s\n", ok ? "misaligned, ok" : "WRONG");
+    if (!ok) errors++;
+    accel_wr(ACCEL_STATUS, ACCEL_STATUS_DONE | ACCEL_STATUS_ERROR);
   }
 
   // ---- 3. n = 0 copies nothing; an odd address is MISALIGNED ----

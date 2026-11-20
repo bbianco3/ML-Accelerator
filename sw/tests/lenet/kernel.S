@@ -10,12 +10,11 @@
 // conv_layer works on "bands" of two output rows, so the 2x2 max pool can run
 // right after them, and a band of the conv output fits in the scratchpad:
 //   1. im2col: for MAT_DIM output pixels at a time, copy each pixel's
-//      K x K x Cin input window into one row of the patch tile (one hcpy
-//      per run of K*Cin contiguous elements),
+//      K x K x Cin input window into one row of the patch tile (one hcpy2d
+//      gathers its K runs of K*Cin contiguous elements),
 //   2. GEMM:   band tile = patch tile x weights on the matrix unit,
-//   3. bias + ReLU with the vector unit, then 2x2 max pool (scalar; values
-//      are >= +0 after ReLU, so comparing bf16 bit patterns as unsigned
-//      integers gives the bf16 maximum).
+//   3. 2x2 max pool, then bias + ReLU on the pooled pixels (vector unit;
+//      pooling first gives the same bits and does a quarter of the work).
 //
 // The host does the "compiling": it pads and packs the weights, and decides
 // where every buffer lives (scratchpad when it fits, HBM otherwise). All of
@@ -73,6 +72,7 @@
 .equ C_NPIX,     88
 .equ C_BROW2,    92
 .equ C_COUTPAD,  96
+.equ C_SHAPE,    100
 
 // struct fc_desc
 .equ F_IN,        0
@@ -221,18 +221,8 @@ conv_layer:
 .Lrow:
   lw    t2, C_NPIX(a0)
   bge   a3, t2, .Lrow_next        // past the band: leave the row as it is
-  lw    t2, C_K(a0)               // K runs of K*Cin contiguous elements
-  mv    t3, a5
-  mv    t4, t0
-.Lky:
-  lw    t5, C_RUN(a0)             // run of K*Cin elements
-  hcpy  t4, t3, t5                // input window row -> patch row
-  slli  t5, t5, 1
-  add   t4, t4, t5                // patch row pointer past the run
-  lw    t5, C_INROW(a0)
-  add   t3, t3, t5
-  addi  t2, t2, -1
-  bnez  t2, .Lky
+  lw    t2, C_SHAPE(a0)           // K runs of K*Cin elements, an input row apart
+  hcpy2d t0, a5, t2               // input window -> patch row
   addi  a3, a3, 1                 // next pixel
   addi  a4, a4, 1
   lw    t2, C_INPX(a0)
@@ -280,43 +270,44 @@ conv_layer:
   addi  a6, a6, -1
   bnez  a6, .Lmtile
 
-  // ---- 3. bias + ReLU (vector), then 2x2 max pool (scalar) ----
-  lw    t0, C_BAND(a0)
-  lw    t1, C_NPIX(a0)
-  lw    t2, C_COUTPAD(a0)
-  lw    t3, C_BIAS(a0)
-  li    t4, 1
-  jal   bias_relu
-  lw    t0, C_BAND(a0)            // band pixel (row 0, x = 2*xo)
+  // ---- 3. 2x2 max pool, then bias + ReLU, all on the vector unit ----
+  // Pooling first is exact: bf16 rounding never reverses an order, so
+  // max(a_i) + b rounds to max(a_i + b), and ReLU commutes with max. The
+  // bias and ReLU then run on a quarter of the pixels.
+  lw    t0, C_BAND(a0)            // top-left pixel of the 2x2 window
   lw    t1, C_POOLW(a0)
   lw    gp, C_BROW(a0)            // next pixel in the row
   lw    ra, C_BROW2(a0)           // same pixel in the second row
 .Lpx:
-  lw    t2, C_COUT(a0)
-  mv    t3, t0
+  lw    t2, C_COUT(a0)            // channels left
+  mv    t3, t0                    // this chunk of channels, top-left pixel
+  lw    t4, C_BIAS(a0)
 .Lch:
-  lhu   t4, 0(t3)
-  add   t5, t3, gp
-  lhu   t5, 0(t5)
-  bgeu  t4, t5, 2f
-  mv    t4, t5
-2:
-  add   t6, t3, ra
-  lhu   a3, 0(t6)
-  bgeu  t4, a3, 3f
-  mv    t4, a3
-3:
-  add   t6, t6, gp
-  lhu   a3, 0(t6)
-  bgeu  t4, a3, 4f
-  mv    t4, a3
-4:
-  sh    t4, 0(tp)
-  addi  tp, tp, 2
-  addi  t3, t3, 2
-  addi  t2, t2, -1
-  bnez  t2, .Lch
-  slli  t2, gp, 1
+  vsetvl   t5, t2
+  vle16    v1, 0(t3)              // top-left
+  add      t6, t3, gp
+  vle16    v2, 0(t6)              // top-right
+  vfmax.vv v1, v1, v2
+  add      t6, t3, ra
+  vle16    v2, 0(t6)              // bottom-left
+  vfmax.vv v1, v1, v2
+  add      t6, t6, gp
+  vle16    v2, 0(t6)              // bottom-right
+  vfmax.vv v1, v1, v2
+  vle16    v2, 0(t4)
+  vfadd.vv v1, v1, v2             // + bias
+  vfmax.vf v1, v1, zero           // ReLU
+  vse16    v1, 0(t3)              // park it in the (used) top-left pixel
+  slli     t6, t5, 1
+  add      t3, t3, t6
+  add      t4, t4, t6
+  sub      t2, t2, t5
+  bnez     t2, .Lch
+  lw    t2, C_COUT(a0)            // pooled output is unpadded HWC (not
+  hcpy  tp, t0, t2                // VLEN/8-aligned), so copy it out
+  slli  t2, t2, 1
+  add   tp, tp, t2
+  slli  t2, gp, 1                 // two pixels right
   add   t0, t0, t2
   addi  t1, t1, -1
   bnez  t1, .Lpx

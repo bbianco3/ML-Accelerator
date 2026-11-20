@@ -40,7 +40,8 @@ struct conv_desc {            // 128 bytes
   uint32_t n_ktiles, n_ntiles, n_mtiles;
   uint32_t w_ktile_bytes, band_row_bytes;
   uint32_t out_w, n_bands, cout, pool_w, in_band_bytes, npix, band_row2_bytes, cout_pad;
-  uint32_t pad[7];
+  uint32_t shape;                                   // hcpy2d operand: {in_row_bytes, k, run}
+  uint32_t pad[6];
 };
 struct fc_desc {              // 64 bytes
   uint32_t in, out, w, bias;
@@ -64,6 +65,8 @@ struct lenet_desc {           // one per core, 1024 bytes apart
 _Static_assert(offsetof(struct lenet_desc, conv) == 80, "kernel.S D_CONV0");
 _Static_assert(offsetof(struct lenet_desc, fc) == 336, "kernel.S D_FC0");
 _Static_assert(offsetof(struct conv_desc, cout_pad) == 96, "kernel.S C_COUTPAD");
+_Static_assert(offsetof(struct conv_desc, shape) == 100, "kernel.S C_SHAPE");
+_Static_assert(sizeof(struct conv_desc) == 128, "kernel.S D_CONV1");
 _Static_assert(offsetof(struct fc_desc, relu) == 40, "kernel.S F_RELU");
 _Static_assert(sizeof(struct lenet_desc) == 1024, "kernel.S D_SHIFT");
 #define DESC_USED 528
@@ -332,6 +335,12 @@ int main(void) {
       cd->npix = 2 * g->out_w;
       cd->band_row2_bytes = g->out_w * g->cout_pad * 2;
       cd->cout_pad = g->cout_pad;
+      // one im2col patch row = K runs of K*Cin elements, an input row apart
+      if (cd->run_elems > 255 || cd->k > 255 || cd->in_row_bytes > 0xFFFF) {
+        printf("conv%d too large for hcpy2d\n", l + 1);
+        return 1;
+      }
+      cd->shape = (cd->in_row_bytes << 16) | (cd->k << 8) | cd->run_elems;
     }
     for (int l = 0; l < 3; l++) {
       const struct fc_geom *g = &fg[l];

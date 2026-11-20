@@ -40,6 +40,7 @@ package accel_pkg;
   // hcpy rd, rs1, rs2 (R-type, funct3 = 1, funct7 = 0): copy x[rs2] bf16
   // elements (halfwords) from address x[rs1] to address x[rd]
   localparam logic [2:0]  CTRL_F3_HCPY = 3'd1;
+  localparam logic [2:0]  CTRL_F3_HCPY2D = 3'd2;   // hcpy2d: rows of runs (im2col)
 
   // ---- OPC_VARITH: R-type, funct7 = operation, funct3 = operand form -------
   //   .vv : vd = vs2 OP vs1

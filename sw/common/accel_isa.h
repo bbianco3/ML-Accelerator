@@ -256,4 +256,12 @@
   .insn r 0x7B, 1, 0x00, \rdst, \rsrc, \rn
 .endm
 
+// hcpy2d rdst, rsrc, rshape: x[rshape] = {stride[31:16], rows[15:8], run[7:0]}.
+// Copies `rows` runs of `run` elements; run r starts at x[rsrc] + r*stride
+// (bytes, even), and the runs are written back to back from x[rdst]. One
+// im2col patch row in one instruction. rdst is READ, not written.
+.macro hcpy2d rdst, rsrc, rshape
+  .insn r 0x7B, 2, 0x00, \rdst, \rsrc, \rshape
+.endm
+
 #endif // ACCEL_ISA_H

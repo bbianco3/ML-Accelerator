@@ -1,4 +1,4 @@
-// copy/kernel.S -- the hcpy instruction (copy a run of bf16 elements).
+// copy/kernel.S -- the hcpy / hcpy2d instructions (copy runs of bf16 elements).
 #include "accel_isa.h"
 
 // copy_jobs(a0 = job table, a1 = number of jobs)
@@ -14,6 +14,27 @@ ACCEL_KERNEL(copy_jobs)
   addi  a1, a1, -1
   bnez  a1, 1b
 2:
+  ecall
+
+// copy2d_jobs(a0 = job table, a1 = number of jobs): jobs {dst, src, shape}
+ACCEL_KERNEL(copy2d_jobs)
+  beqz  a1, 2f
+1:
+  lw    t0, 0(a0)
+  lw    t1, 4(a0)
+  lw    t2, 8(a0)
+  hcpy2d t0, t1, t2
+  addi  a0, a0, 12
+  addi  a1, a1, -1
+  bnez  a1, 1b
+2:
+  ecall
+
+// copy2d_one(a0 = dst, a1 = src, a2 = shape): a single hcpy2d (fault test)
+ACCEL_KERNEL(copy2d_one)
+  .globl pc_copy2d_one
+pc_copy2d_one:
+  hcpy2d a0, a1, a2
   ecall
 
 // copy_one(a0 = dst, a1 = src, a2 = n): a single hcpy (fault and timing tests)

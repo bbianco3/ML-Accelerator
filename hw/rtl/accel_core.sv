@@ -22,7 +22,8 @@
 //                                                 +--> MXU_WAIT -> FETCH (mmacc)
 //                                                 +--> HCPY_RD <-> HCPY_WR -> FETCH (hcpy:
 //                                                 |       copy a run of halfwords, one
-//                                                 |       beat-sized chunk at a time)
+//                                                 |       beat-sized chunk at a time;
+//                                                 |       hcpy2d: several strided runs)
 //                                                 +--> BARRIER -> FETCH  (barrier: wait for
 //                                                 |                       every launched core)
 //                                                 +--> IDLE         (ecall, or a fault)
@@ -526,6 +527,12 @@ module accel_core
           else if (rs2v == 32'd0) ex_next = 1'b1;      // nothing to copy
           else                    ex_hcpy = 1'b1;
         end
+        else if (funct3 == CTRL_F3_HCPY2D && funct7 == 7'h00) begin
+          // hcpy2d x[rd] <- x[rs1]: x[rs2] = {src stride (bytes), rows, run}
+          if (rdv[0] || rs1v[0] || rs2v[16]) begin ex_fault = 1'b1; ex_cause = ERR_MISALIGNED; end
+          else if (rs2v[15:8] == 8'd0 || rs2v[7:0] == 8'd0) ex_next = 1'b1;
+          else                    ex_hcpy = 1'b1;
+        end
         else ex_fault = 1'b1;
       end
 
@@ -590,11 +597,18 @@ module accel_core
   //             byte strobes for just those bytes; src, dst += chunk
   // If the chunk ended because of the destination beat, the next chunk is
   // still in cp_beat, so the read is skipped.
+  // hcpy2d repeats this for cp_rows runs: each run starts cp_stride bytes
+  // after the previous run's start (cp_srow), and the destination just keeps
+  // going, so the runs land back to back (one im2col patch row).
   localparam int CNT_W  = OFF_W + 1;              // holds 0 .. BYTES
   localparam int ONES_W = BYTES + 1;
 
   logic [31:0]           cp_src, cp_dst;
-  logic [32:0]           cp_left;                 // bytes still to copy
+  logic [32:0]           cp_left;                 // bytes still to copy in this run
+  logic [32:0]           cp_run;                  // bytes per run
+  logic [31:0]           cp_srow;                 // source start of this run
+  logic [15:0]           cp_stride;               // source bytes from run to run
+  logic [7:0]            cp_rows;                 // runs left, this one included
   logic [HBM_DATA_W-1:0] cp_beat;                 // the source beat
   logic [OFF_W-1:0]      cp_soff, cp_doff, cp_rot;
   logic [CNT_W-1:0]      cp_room_s, cp_room_d, cp_chunk;
@@ -759,6 +773,10 @@ module accel_core
       cp_src      <= '0;
       cp_dst      <= '0;
       cp_left     <= '0;
+      cp_run      <= '0;
+      cp_srow     <= '0;
+      cp_stride   <= '0;
+      cp_rows     <= '0;
       cp_beat     <= '0;
       for (int i = 0; i < 32; i++) xreg[i] <= '0;
     end else begin
@@ -827,8 +845,19 @@ module accel_core
             state <= S_BARRIER;
           else if (ex_hcpy) begin
             cp_src  <= rs1v;
+            cp_srow <= rs1v;
             cp_dst  <= rdv;
-            cp_left <= {rs2v, 1'b0};                // halfwords -> bytes
+            if (funct3 == CTRL_F3_HCPY2D) begin
+              cp_left   <= {24'd0, rs2v[7:0], 1'b0};  // halfwords -> bytes
+              cp_run    <= {24'd0, rs2v[7:0], 1'b0};
+              cp_rows   <= rs2v[15:8];
+              cp_stride <= rs2v[31:16];
+            end else begin
+              cp_left   <= {rs2v, 1'b0};
+              cp_run    <= {rs2v, 1'b0};
+              cp_rows   <= 8'd1;
+              cp_stride <= 16'd0;
+            end
             state   <= S_HCPY_RD;
           end
           else if (ex_vpu_ar)
@@ -917,10 +946,18 @@ module accel_core
             cp_src  <= cp_src + 32'(cp_chunk);
             cp_dst  <= cp_dst + 32'(cp_chunk);
             cp_left <= cp_left - 33'(cp_chunk);
-            if (cp_left == 33'(cp_chunk)) begin     // that was the last chunk
-              pc          <= pc + 32'd4;
-              instret_cnt <= instret_cnt + 64'd1;
-              state       <= S_FETCH;
+            if (cp_left == 33'(cp_chunk)) begin     // that was the run's last chunk
+              if (cp_rows == 8'd1) begin            // ... and the last run
+                pc          <= pc + 32'd4;
+                instret_cnt <= instret_cnt + 64'd1;
+                state       <= S_FETCH;
+              end else begin                        // next run (overrides src/left)
+                cp_rows <= cp_rows - 8'd1;
+                cp_srow <= cp_srow + 32'(cp_stride);
+                cp_src  <= cp_srow + 32'(cp_stride);
+                cp_left <= cp_run;
+                state   <= S_HCPY_RD;
+              end
             end
             else state <= cp_same_src ? S_HCPY_WR : S_HCPY_RD;
           end

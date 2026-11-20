@@ -186,6 +186,7 @@ blocked matrices map onto these instructions.
 |---|---|---|
 | `barrier` | `0x0000007B` | wait until every launched core is waiting at a barrier or has finished (`ecall` or fault), then continue together |
 | `hcpy rd, rs1, rs2` | R-type, funct3 = 1, funct7 = 0 | copy `x[rs2]` halfwords (bf16 elements) from address `x[rs1]` to address `x[rd]`; `rd` is read, not written |
+| `hcpy2d rd, rs1, rs2` | R-type, funct3 = 2, funct7 = 0 | `x[rs2] = {stride[31:16], rows[15:8], run[7:0]}`: copy `rows` runs of `run` halfwords, run *r* from `x[rs1] + r*stride` (bytes), all back to back from `x[rd]`; `rd` is read, not written |
 
 `hcpy` takes any 2-byte-aligned source and destination, in HBM or the
 scratchpad, and any count (0 copies nothing). It exists for im2col, whose
@@ -194,6 +195,12 @@ source or destination address is `MISALIGNED`, an address outside memory
 `BUS`. The source and destination must not overlap. The hardware moves one
 chunk per write, a chunk being whatever fits before the source or the
 destination crosses a bus beat.
+
+`hcpy2d` is the same copy repeated: it gathers a 2-D window (`rows` rows of
+`run` elements, `stride` bytes apart in the source) into one contiguous
+destination, which is exactly one im2col patch row (`rows = K`,
+`run = K x Cin`, `stride` = one input row). `rows = 0` or `run = 0` copies
+nothing; an odd `stride` is `MISALIGNED`, as are odd addresses.
 
 Other encodings in custom-3 are `ILLEGAL`. Writes to HBM issued before a
 barrier are visible to all cores after it (each core finishes every memory
