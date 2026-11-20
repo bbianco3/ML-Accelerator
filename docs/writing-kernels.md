@@ -62,7 +62,7 @@ int main(void) {
   for (int i = 0; i < N; i++) x[i] = f32_to_bf16((float)i * 0.25f);
   bf16_t alpha = f32_to_bf16(3.0f);
 
-  uint32_t args[] = {N, (uint32_t)x, (uint32_t)y, alpha};
+  uint32_t args[] = {N, (uint32_t)(uintptr_t)x, (uint32_t)(uintptr_t)y, alpha};
   uint32_t st = accel_run(scale_kernel, args, 4);
   if (st & ACCEL_STATUS_ERROR) return 1;
   printf("%u cycles\n", (uint32_t)accel_cycles());
@@ -99,14 +99,17 @@ int main(void) {
   `HBM_DATA` (initialised) or `hbm_alloc()`. Host RAM is invisible to the
   accelerator.
 * Check results with the reference model in
-  [`bf16.h`](../sw/common/bf16.h) using exact equality, as described in
-  [numerics.md](numerics.md).
+  [`bf16.h`](../sw/common/bf16.h): exact equality for element-wise vector
+  operations, `bf16_close()` from [`check.h`](../sw/common/check.h) for
+  matrix results, as described in [numerics.md](numerics.md).
 * Big software reference computations are slow at the default 1 host
   instruction per cycle. Add `+host_ipc=16` to the test's `plusargs` file.
 * Put `roi_begin()` / `roi_end()` around the part you want measured. Inside,
   the host is a timed 2 GHz core and its energy is counted
-  ([host-model.md](host-model.md)); polling `STATUS` there keeps the CPU
-  busy, `accel_wait_irq()` lets it sleep.
+  ([host-model.md](host-model.md)); polling `STATUS` there keeps the host
+  CPU busy, `accel_wait_irq()` lets it sleep.
+* Once a kernel works, [software-optimization.md](software-optimization.md)
+  lists how to make kernels, the driver and the host program faster.
 * Matrices: use [`mat_layout.h`](../sw/common/mat_layout.h) and see
   [memory-formats.md](memory-formats.md).
 
@@ -171,7 +174,7 @@ plain HBM. See [sram.md](sram.md#using-the-scratchpad-well).
 ## Debugging
 
 1. Read the failure: `accel_run` prints the error cause, PC and instruction.
-   Find the PC in `build/sw/<test>/<test>.dis`.
+   Find the PC in `build/sw/<test>/kernel.dis`.
 2. `SIM_ARGS=+accel_trace` prints every instruction the accelerator
    executes, with its core and cycle (`grep core1` to follow one core).
 3. Print from the host: dump buffers after the kernel. Add `ebreak` in the

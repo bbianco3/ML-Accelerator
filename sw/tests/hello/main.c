@@ -27,7 +27,7 @@ int main(void) {
   bf16_t x = f32_to_bf16(3.140625f), y = f32_to_bf16(-1.0f);
   bf16_t z = bf16_add(x, y);
   printf("bf16: 0x%04x + 0x%04x = 0x%04x (%f)\n", x, y, z, (double)bf16_to_f32(z));
-  if (z != 0x4009) return 3;   // 2.140625
+  if (z != f32_to_bf16(2.140625f)) return 3;
 
   uint64_t t0 = sim_cycles();
   printf("cycle counter = %u\n", (uint32_t)t0);

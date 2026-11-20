@@ -57,19 +57,31 @@ HW_CFG := v$(VLEN)_m$(MAT_DIM)_t$(NUM_TREGS)_a$(NUM_ACCS)_r$(MXU_ROWS)_d$(HBM_DA
 ASAP7_DIR    ?= $(REPO)/pdk/asap7
 ASAP7_CORNER ?= TT
 
-# ---------------- competition rules ----------------
-# competition.json holds the limits shared by simulation, synthesis and
-# scoring: clock period, area limit, host link delay, result tolerance.
+# ---------------- settings (competition.json) ----------------
+# One file holds the numbers that simulation, synthesis and scoring share:
+#   design    yours to tune: clock period and area target
+#   synth     yours to tune: how hard and how long Design Compiler works
+#   platform  fixed: host link delay, HBM latency, result tolerance
+# Every value can also be overridden on the command line for an experiment,
+# e.g. `make synth CLK_PERIOD=2.0 SYNTH_RETIME=1`. See docs/competition.md.
 RULES_FILE := $(REPO)/competition.json
 RULES      := $(shell python3 $(REPO)/tools/competition.py make)
-ifneq ($(words $(RULES)),5)
+ifneq ($(words $(RULES)),13)
   $(error cannot read $(RULES_FILE): run 'python3 tools/competition.py make' to see why)
 endif
-RULE_CLK_PERIOD := $(word 1,$(RULES))
-MAX_AREA_UM2    := $(word 2,$(RULES))
-LINK_DELAY_NS   ?= $(word 3,$(RULES))
-TOL_REL         := $(word 4,$(RULES))
-TOL_ABS         := $(word 5,$(RULES))
+RULE_CLK_PERIOD     := $(word 1,$(RULES))
+MAX_AREA_UM2        ?= $(word 2,$(RULES))
+SYNTH_TIME_LIMIT_MIN ?= $(word 3,$(RULES))
+SYNTH_EXTRA_PASSES  ?= $(word 4,$(RULES))
+SYNTH_RETIME        ?= $(word 5,$(RULES))
+SYNTH_CLOCK_GATING  ?= $(word 6,$(RULES))
+SYNTH_MAX_FANOUT    ?= $(word 7,$(RULES))
+SYNTH_BUFFER_PORTS  ?= $(word 8,$(RULES))
+LINK_DELAY_NS       ?= $(word 9,$(RULES))
+HBM_RD_LATENCY_NS   ?= $(word 10,$(RULES))
+HBM_WR_LATENCY_NS   ?= $(word 11,$(RULES))
+TOL_REL             := $(word 12,$(RULES))
+TOL_ABS             := $(word 13,$(RULES))
 
 # ---------------- test selection ----------------
 TEST  ?= hello
@@ -92,7 +104,7 @@ help:
 	@echo "  lint                VCS lint of the RTL only"
 	@echo "  verdi    TEST=<t>   open Verdi on a run that used WAVES=1"
 	@echo "  synth               synthesize accel_top with Design Compiler (PDK=asap7|freepdk45)"
-	@echo "  limits              check the synthesis result against competition.json (timing, area)"
+	@echo "  limits              check the synthesis result against your clock and area target"
 	@echo "  score    TEST=<t>   run a test and print its score: area x energy x time^2"
 	@echo "  asap7               download + compile the ASAP7 cell libraries (done by synth)"
 	@echo "  sram                generate + compile the ASAP7 SRAM macros     (done by synth)"
@@ -107,8 +119,12 @@ help:
 	@echo "  WAVES=$(WAVES)  (1 = dump FSDB waveforms)   SIM_ARGS='$(SIM_ARGS)'   SIM_SRAM=$(SIM_SRAM) (behav|macro)"
 	@echo "  PDK=$(PDK) CLK_PERIOD=$(CLK_PERIOD) ns ASAP7_CORNER=$(ASAP7_CORNER) ASAP7_VT=$(ASAP7_VT) SRAM=$(SRAM) (synthesis)"
 	@echo ""
-	@echo "Rules (competition.json): clock $(RULE_CLK_PERIOD) ns, area <= $(MAX_AREA_UM2) um^2,"
-	@echo "  host link delay $(LINK_DELAY_NS) ns, result tolerance $(TOL_ABS) + $(TOL_REL) x |ref|"
+	@echo "Settings (competition.json; any of them can be overridden on the command line):"
+	@echo "  design   CLK_PERIOD=$(CLK_PERIOD) ns  MAX_AREA_UM2=$(MAX_AREA_UM2)"
+	@echo "  synth    SYNTH_TIME_LIMIT_MIN=$(SYNTH_TIME_LIMIT_MIN) SYNTH_EXTRA_PASSES=$(SYNTH_EXTRA_PASSES) SYNTH_RETIME=$(SYNTH_RETIME)"
+	@echo "           SYNTH_CLOCK_GATING=$(SYNTH_CLOCK_GATING) SYNTH_MAX_FANOUT=$(SYNTH_MAX_FANOUT) SYNTH_BUFFER_PORTS=$(SYNTH_BUFFER_PORTS) SYNTH_TAG=$(SYNTH_TAG)"
+	@echo "  platform (fixed) link delay $(LINK_DELAY_NS) ns, HBM latency $(HBM_RD_LATENCY_NS)/$(HBM_WR_LATENCY_NS) ns read/write,"
+	@echo "           result tolerance $(TOL_ABS) + $(TOL_REL) x |ref|"
 
 clean:
 	rm -rf $(REPO)/build

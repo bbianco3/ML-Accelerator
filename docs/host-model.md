@@ -2,7 +2,7 @@
 
 The host CPU is a **fixed** part of the platform: a 2 GHz RV64G core whose
 area and clock you cannot change. What you can change is how much work it
-does. Moving work from the CPU to the accelerator (or back) changes both run
+does. Moving work from the host CPU to the accelerator (or back) changes both run
 time and energy, and this model is what makes that visible.
 
 ```
@@ -51,8 +51,9 @@ ROI_STATS time_ns=256397.5 accel_cycles=102559 host_instr=42370 host_cycles=5127
 ## Time
 
 The testbench has one clock, the accelerator's. Its period is `CLK_PERIOD`
-(the same make variable `make synth` uses; its default is `clk_period_ns`
-in `competition.json`, 2.5 ns), so an accelerator
+(the same make variable `make synth` uses; it comes from
+`design.clk_period_ns` in `competition.json`, 2.5 ns unless you change it,
+which you should consider: [competition.md](competition.md)), so an accelerator
 that synthesizes at a shorter period also gets more done per nanosecond in
 simulation: `make run TEST=lenet CLK_PERIOD=2.0`. (Waveform time still shows
 one unit per cycle.) **Only use a `CLK_PERIOD` your design meets in
@@ -81,8 +82,8 @@ meanwhile.
 
 Host and accelerator are separate devices. Every access to an accelerator
 register, and the interrupt line, crosses a link with a one-way latency of
-`link_delay_ns` in `competition.json` (5 ns; make variable `LINK_DELAY_NS`,
-plusarg `+link_delay_ns`). That is what an accelerator on the same chip as
+`platform.link_delay_ns` in `competition.json` (5 ns; make variable
+`LINK_DELAY_NS`, plusarg `+link_delay_ns`). That is what an accelerator on the same chip as
 its processor sees: a bus bridge and a clock-domain crossing between the
 2 GHz core and the accelerator clock, about two accelerator cycles.
 
@@ -92,7 +93,7 @@ its processor sees: a bus bridge and a clock-domain crossing between the
 
 A register access therefore takes about 20 ns (2 x 5 ns plus 3-4 cycles of
 handshake), i.e. some 40 host cycles: launching a kernel costs a few hundred
-host cycles, and polling `STATUS` in a loop keeps the CPU busy where
+host cycles, and polling `STATUS` in a loop keeps the host CPU busy where
 `accel_wait_irq()` lets it sleep. Data does not cross the link: it goes
 through HBM. Try `LINK_DELAY_NS=100` to see what an off-chip accelerator
 would feel like.

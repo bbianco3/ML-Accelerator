@@ -1,11 +1,16 @@
 # Numerics contract
 
-Every floating-point result the accelerator produces is defined **bit for
-bit** by the rules below. The RTL (`hw/rtl/accel_fp_pkg.sv`) and the C
-reference model (`sw/common/bf16.h`) implement exactly these rules, so host
-programs can check kernels with `==` on the bit patterns, with no tolerances.
-`make unit` cross-checks the two on millions of random and edge-case
+Every floating-point result of the reference design is defined **bit for
+bit** by the rules below. The RTL functions (`hw/rtl/accel_fp_pkg.sv`) and
+the C reference model (`sw/common/bf16.h`) implement exactly these rules,
+and `make unit` cross-checks the two on millions of random and edge-case
 operands.
+
+How strictly a test holds your design to them depends on the operation:
+**element-wise vector operations are checked bit for bit** (`==` on the bit
+patterns), while **matrix results are checked within a
+[tolerance](#tolerance-what-correct-means-for-matrix-and-tensor-results)**,
+because a different matrix engine may add in a different order.
 
 If you change the hardware's arithmetic, change `bf16.h` the same way.
 Otherwise every test that compares results will fail, which is the point.
@@ -78,8 +83,8 @@ mixed-precision hardware.
 
 ## How this compares to common hardware
 
-* Same storage format and rounding as TPUs, Intel AMX-BF16 and NVIDIA
-  tensor cores: bf16 inputs, fp32 accumulation.
+* Same storage format and rounding as Google's TPUs, Intel AMX-BF16 and
+  NVIDIA's Tensor Cores: bf16 inputs, fp32 accumulation.
 * Most ML hardware also flushes subnormals.
 * Unlike IEEE-754, there are no flags and only one rounding mode.
 
@@ -100,6 +105,8 @@ may fuse `a*b + c` into an FMA instruction that rounds differently.
 
 ## Tolerance: what "correct" means for matrix and tensor results
 
+<!-- the heading is linked from other documents; keep its text -->
+
 The contract above describes the reference design bit for bit, and
 element-wise vector operations (`vfadd`, `vfmul`, `vfmax`, ...) are tested
 that way: one operation, one rounding, one right answer.
@@ -115,8 +122,9 @@ tolerance ([`sw/common/check.h`](../sw/common/check.h)):
 accepted when   |got - ref| <= tolerance_abs + tolerance_rel * |ref|
 ```
 
-`tolerance_abs` and `tolerance_rel` (both 0.02) are set in
-[`competition.json`](../competition.json) and compiled into every test. NaN
+`tolerance_abs` and `tolerance_rel` (both 0.02) are set in the `platform`
+section of [`competition.json`](../competition.json), which is fixed, and
+compiled into every test. NaN
 only matches NaN and infinity only the same infinity. For scale: one bf16
 rounding is at most 0.4 % of the value, so the tolerance leaves room for a
 few roundings and some cancellation, but not for accumulating in bf16 over

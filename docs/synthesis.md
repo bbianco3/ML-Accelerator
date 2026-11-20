@@ -2,8 +2,10 @@
 
 ```sh
 source setup_env.sh
-make synth                                     # ASAP7, default config, 2.5 ns (400 MHz)
-make synth CLK_PERIOD=2.0 VLEN=128 MXU_ROWS=2  # any clock / parameters
+make synth                                     # ASAP7, default configuration, settings from competition.json
+make limits                                    # did it meet its clock period and area target?
+make synth CLK_PERIOD=2.0 VLEN=128 MXU_ROWS=2  # any clock period / parameters
+make synth MAX_AREA_UM2=0 SYNTH_RETIME=1 SYNTH_TAG=small   # other settings, in their own result directory
 make synth NUM_CORES=1 SPAD_KB=0               # one core, no scratchpad
 make synth SRAM=flops                          # scratchpads from flip-flops instead of SRAM macros
 make synth SYNTH_ELAB_ONLY=1                   # analyze + elaborate + check_design only
@@ -60,7 +62,7 @@ into `pdk/asap7/sram/db/<CORNER>/` (a few seconds). See [sram.md](sram.md).
 * **Cell names** end in `_ASAP7_75t_R` (RVT), `_L` or `_SL`.
 * **Don't-use cells**, the same list OpenROAD uses: fractional-drive
   cells (`*x1p*`, `*xp*`), scan flops (`SDF*`) and integrated clock gates
-  (`ICG*`).
+  (`ICG*`; these are allowed when the `clock_gating` setting is on).
 * **Flip-flops** have no reset pin, so the synchronous `rst_n` becomes a
   gate in front of D. That is normal and is why reset shows up in the logic
   area.
@@ -85,23 +87,91 @@ into `pdk/asap7/sram/db/<CORNER>/` (a few seconds). See [sram.md](sram.md).
 3. elaborates `accel_top` with the requested parameters and renames it back
    to `accel_top`,
 4. constrains: clock `clk` with period `CLK_PERIOD`, 2 % setup uncertainty,
-   input/output delays of 20 % of the period, an ideal reset network. The
-   clock is ideal (no clock tree yet), so hold is reported but not fixed.
-   Hold fixing belongs after clock-tree synthesis in place and route,
-5. runs `compile_ultra -no_autoungroup` (plus DesignWare for the arithmetic),
-6. writes reports, a netlist, a `.ddc` and the `.sdc`.
+   input/output delays of 20 % of the period, an ideal reset network, the
+   area target `MAX_AREA_UM2`, and the buffering rules if they are switched
+   on. The clock is ideal (no clock tree yet), so hold is reported but not
+   fixed. Hold fixing belongs after clock-tree synthesis in place and route,
+5. runs `compile_ultra -no_autoungroup` (plus DesignWare for the
+   arithmetic), with `-retime` and `-gate_clock` if those settings are on,
+6. writes reports, a netlist, a `.ddc` and the `.sdc`,
+7. if timing is still violated and `extra_passes` allows, runs
+   `compile_ultra -incremental` and writes the results again, until timing
+   is met, the passes are used up or the time limit is reached.
+
+## Synthesis settings
+
+The `design` and `synth` sections of
+[`competition.json`](../competition.json) are yours to tune
+([competition.md](competition.md)). Each has a make variable for one-off
+experiments, and `SYNTH_TAG=<name>` keeps an experiment's results apart
+from the others.
+
+| Setting (`competition.json`) | Make variable | What it does | Cost / when to use |
+|---|---|---|---|
+| `design.clk_period_ns` | `CLK_PERIOD` | the clock constraint; also the cycle time in simulation | shorter: faster design, but larger cells, more power, longer compile, may not close |
+| `design.max_area_um2` | `MAX_AREA_UM2` | area target (`set_max_area`). After timing is met DC recovers area until it is below the target; 0 = as far as it can | tighter: smaller design, longer compile. Checked by `make limits` (0 = no check) |
+| `synth.extra_passes` | `SYNTH_EXTRA_PASSES` | up to N more `compile_ultra -incremental` runs while timing is violated | each pass can take as long as a good part of the first compile; useful when the first compile ends a few percent short |
+| `synth.time_limit_min` | `SYNTH_TIME_LIMIT_MIN` | time budget, see below | |
+| `synth.retime` | `SYNTH_RETIME` | DC may move registers across logic (`-retime`) to balance pipeline stages | helps designs with uneven stages, e.g. a register stage you added in a convenient but not ideal place. Register names in reports no longer match the RTL one to one |
+| `synth.clock_gating` | `SYNTH_CLOCK_GATING` | registers that only load on an enable get a clock gate instead of a feedback multiplexer (`-gate_clock`) | lowers power, which counts in the score through energy; `reports/clock_gating.rpt` shows how many registers were gated |
+| `synth.max_fanout` | `SYNTH_MAX_FANOUT` | nets with more loads than this get a buffer tree (`set_max_fanout`) | DC already buffers for timing; this also bounds fan-out on non-critical nets, which costs some area and makes the netlist closer to what place and route will build. Try 16 to 32 |
+| `synth.buffer_ports` | `SYNTH_BUFFER_PORTS` | buffers feedthroughs and outputs that share a net (`set_fix_multiple_port_nets`) | cleaner netlist for a later place-and-route flow, slightly more area |
+
+**Measured on the reference design** (small configuration of
+[Reference results](#reference-results), `FP_PIPE=1`, 2.5 ns, `lenet`):
+
+| Settings | Area (um^2) | Power (mW) | Worst slack | Compile time | `lenet` score |
+|---|---|---|---|---|---|
+| defaults (all off) | 19,277 | 6.03 | +0.04 ps | 25 min | 20.1 |
+| `retime`, `clock_gating`, `max_fanout` 32, `buffer_ports` | 17,899 | 2.04 | +0.20 ps | 25 min | 17.1 |
+
+Clock gating does most of this: 89 % of the registers got a clock gate
+(446 gates), which removes their feedback multiplexers (area) and stops
+their clock pins toggling when they hold (power). The four settings were
+switched on together in this run, so the table does not say how much each
+one contributes; that is an experiment for you. The gates are the
+library's integrated clock-gating cells, which contain a latch by design;
+that is not an inferred latch in your RTL.
+
+**Time limit.** A large design can take many hours, and Design Compiler
+has no way to say "stop optimizing now and keep what you have" in the
+middle of a compile. `time_limit_min` therefore works in two steps:
+
+* **Soft:** once the limit has passed, no further optimization pass is
+  started. The results of the last finished pass are already on disk,
+  because reports and the netlist are written after every pass.
+* **Hard:** 20 minutes after the limit, `dc_shell` is stopped. If the
+  *first* compile has not finished by then there are no results: raise the
+  limit, loosen the clock period, or synthesize a smaller configuration
+  first.
+
+So a sensible budget is "the first compile, plus as many extra passes as
+fit": e.g. `"time_limit_min": 240, "extra_passes": 3`. On a machine that
+restarts every night, set the limit so that the run ends before the
+restart.
+
+**Things that are not settings but work the same way:**
+
+* `ASAP7_VT=LVT` or `SLVT`: faster, leakier cells.
+* `ASAP7_CORNER=FF` / `SS`: the fast and slow process corners.
+* `SRAM=flops`: scratchpads from flip-flops, to see what the SRAM macros
+  save.
+* The hardware parameters (`VLEN`, `MAT_DIM`, `MXU_ROWS`, `NUM_CORES`,
+  `FP_PIPE`, ...): they change the design itself
+  ([parameters.md](parameters.md)).
 
 The alib (DC's library analysis cache) for ASAP7 is built once into
 `pdk/asap7/alib/` and reused by every later run.
 
 ## Outputs
 
-`build/synth/<pdk>/<hw-config>[_flops]_<period>ns/`, e.g.
+`build/synth/<pdk>/<configuration>[_flops]_<period>ns[_<SYNTH_TAG>]/`, e.g.
 `build/synth/asap7_TT_RVT/v256_m16_t4_a2_r4_d256_i16_c2_s16_2.5ns/`:
 
 | File | Contents |
 |---|---|
 | `synth.log` | full DC log. Search for `Error`, `Warning`, `Latch` |
+| `reports/settings.rpt` | the clock period, area target and synthesis settings this run was given (read by `make limits` and `make score`) |
 | `reports/check_design.rpt` | structural problems after elaboration (should say "No issues found") |
 | `reports/qor.rpt` | summary: area (SRAM macros under *Macro/Black Box Area*), cell counts, critical path, worst negative slack (WNS), total negative slack |
 | `reports/area.rpt` | area per module (`-hierarchy`); each core is `g_core_<i>_...`, its scratchpad `.../u_spad` |
@@ -110,15 +180,16 @@ The alib (DC's library analysis cache) for ASAP7 is built once into
 | `reports/violators.rpt` | constraint violations. Expected entries: hold (not fixed pre-CTS) and `max_leakage_power` with *Required 0.00*, which is DC's default "minimize leakage" goal and not a real constraint. The *Actual* column is the leakage in the library unit (pW for ASAP7). |
 | `reports/power.rpt` | estimated power per module (default switching activity), SRAM read/write energy and leakage included |
 | `reports/reference.rpt` | cell usage per module |
+| `reports/clock_gating.rpt` | with `clock_gating`: number of clock gates and of gated registers |
 | `accel_top.v`, `accel_top.ddc`, `accel_top.sdc` | netlist, DC database, constraints (inputs to OpenROAD / ICC2) |
 
 ## Reading the results
 
 * **Slack**: `slack (MET)` or `slack (VIOLATED)`. With ASAP7 the numbers are
-  in ps: a slack of -150 means the design needs `CLK_PERIOD + 0.15` ns. The
-  critical path is in the floating-point lanes: operand mux, then bf16
-  multiply, then fp32 add with normalization, then rounding
-  (`accel_vpu`/`accel_mxu`).
+  in ps: a slack of -150 means the design needs `CLK_PERIOD + 0.15` ns.
+  `reports/timing.rpt` names the start and end register of the worst
+  paths; [Timing bottlenecks](#timing-bottlenecks) shows where they are in
+  the reference design.
 * **Area**: per core, dominated by storage (flip-flops for vector registers,
   tiles, accumulators), the `VLEN/16 + MXU_ROWS*MAT_DIM` FP lanes and the
   scratchpad macros. Everything scales with `NUM_CORES`. Use `area.rpt` to
@@ -215,14 +286,13 @@ are still representative):
 | same | 2.5 ns | 8,229 (MXU 47 %, VPU 32 %), leakage 9.5 uW | +0.01 ps (met, path 2.44 ns) | 16 min |
 | default (`VLEN=256 MAT_DIM=16 MXU_ROWS=4 ...`) | 2.5 ns | 56,881 (MXU 72 %, VPU 20 %, I-cache 4.5 %), 23.7 mW, leakage 59 uW | 0.00 ps (met, path 2.44 ns) | 110 min |
 
-**Why the default is 2.5 ns and not 1 GHz.** The reference design does a
-whole floating-point MAC (operand mux, then bf16 multiply, then fp32 add with
-normalization and rounding) in one cycle. In ASAP7 RVT that path is about
-1.75-2 ns (about 130 FO4, the same logic depth that needed 9.7 ns in
-FreePDK45). An impossible target also makes DC slow: the 1 ns run above
-spent most of its 57 minutes trying. Getting to 1 GHz means **pipelining the
-FP lanes** (2-3 stages), which is a good student project: results must stay
-bit-identical, so `make regress` checks it.
+**Why the default clock period is 2.5 ns.** It is simply a period the
+reference design meets without effort: its floating-point paths need about
+1.5 to 1.75 ns when pushed, and an impossible target makes DC slow (the
+1 ns run above spent most of its 57 minutes trying). It is a starting
+point, not a recommendation. Your design has its own best clock period:
+sweep it, and shorten the paths that limit it
+([competition.md](competition.md#design-your-clock-and-your-area)).
 
 Iterate on timing with a small configuration (same lane design, much faster
 compiles), then confirm with the full one once, e.g. overnight or with
@@ -234,15 +304,18 @@ slack met.
 
 ## Tips
 
-* Find the maximum frequency by sweeping `CLK_PERIOD` (e.g. 2.5, 2.2, 2.0,
-  1.8) and taking the smallest period with `slack (MET)`. Keep targets
-  reachable: a clock far below the critical path makes DC run for an hour.
+* **Sweep the clock period** (e.g. 3.0, 2.5, 2.2, 2.0, 1.8) and score each
+  result: the best score is usually not at the shortest period that meets
+  timing, because area and power rise steeply near the limit. Keep targets
+  reachable: a clock far below the critical path makes DC run for hours.
+* **Then sweep the area target** at the period you chose.
 * `ASAP7_VT=LVT` or `SLVT` trades leakage for speed. It's a quick way to see
   how much of a timing problem is the library rather than the design.
-* Pipelining the FP lanes (a register between multiply and add) is the
-  standard way to shorten the critical path. The FSMs in
-  `accel_vpu`/`accel_mxu` then need an extra cycle, and results must stay
-  bit-identical, so `make regress` still passes.
-* Report the same `CLK_PERIOD`, corner and Vt when comparing before/after.
+* Pipelining the floating-point paths is the standard way to shorten the
+  critical path (`FP_PIPE` in the reference design). Results must not
+  change, so `make regress` still passes. `synth.retime` can then even out
+  the stages.
+* Change one thing at a time, and give each experiment a `SYNTH_TAG`.
+  State the clock period, corner, Vt and settings with every number.
 * SRAM macros: see [sram.md](sram.md). Compare `SRAM=macro` with
   `SRAM=flops` to see what the macros save.

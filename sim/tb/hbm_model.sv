@@ -5,8 +5,13 @@
 // in C (sim/csrc/platform.c) so the host ISS sees the same bytes.
 //
 // Timing model (runtime plusargs, see docs/simulation.md):
-//   +hbm_rd_latency=N   cycles from AR handshake to the first R beat (40)
-//   +hbm_wr_latency=N   cycles from the last W beat to the B response (20)
+//   +hbm_rd_latency_ns=T  time from AR handshake to the first R beat (100 ns)
+//   +hbm_wr_latency_ns=T  time from the last W beat to the B response (50 ns)
+//                         Both are converted to cycles with +clk_period_ns
+//                         (2.5 ns: 40 and 20 cycles), rounding up, so memory
+//                         does not get faster when the accelerator clock does.
+//   +hbm_rd_latency=N     the same in cycles; overrides the _ns form
+//   +hbm_wr_latency=N
 //   +hbm_max_outstanding=N  read/write requests accepted before back-pressure (8)
 //   +hbm_stall_pct=P    probability (0-100) of de-asserting a ready/valid in
 //                       any cycle -- random back-pressure for robustness (0)
@@ -78,15 +83,20 @@ module hbm_model #(
   int     rbeat, wbeat;
   longint now;
 
-  int rd_lat, wr_lat, max_out, stall_pct;
+  int  rd_lat, wr_lat, max_out, stall_pct;
+  real clk_ns, rd_ns, wr_ns;
   bit trace;
 
   // statistics
   longint n_rd_txn, n_wr_txn, n_rd_beats, n_wr_beats, first_cycle, last_cycle;
 
   initial begin
-    if (!$value$plusargs("hbm_rd_latency=%d", rd_lat))       rd_lat    = 40;
-    if (!$value$plusargs("hbm_wr_latency=%d", wr_lat))       wr_lat    = 20;
+    if (!$value$plusargs("clk_period_ns=%f", clk_ns) || clk_ns <= 0.0) clk_ns = 2.5;
+    if (!$value$plusargs("hbm_rd_latency_ns=%f", rd_ns))     rd_ns     = 100.0;
+    if (!$value$plusargs("hbm_wr_latency_ns=%f", wr_ns))     wr_ns     = 50.0;
+    if (!$value$plusargs("hbm_rd_latency=%d", rd_lat))       rd_lat    = int'($ceil(rd_ns / clk_ns - 1e-9));
+    if (!$value$plusargs("hbm_wr_latency=%d", wr_lat))       wr_lat    = int'($ceil(wr_ns / clk_ns - 1e-9));
+    $display("[hbm] latency: read %0d cycles, write %0d cycles (clock %0.3f ns)", rd_lat, wr_lat, clk_ns);
     if (!$value$plusargs("hbm_max_outstanding=%d", max_out)) max_out   = 8;
     if (!$value$plusargs("hbm_stall_pct=%d", stall_pct))     stall_pct = 0;
     trace = $test$plusargs("hbm_trace");

@@ -76,7 +76,7 @@ int main(void) {
   }
   // vectors: first copy unchanged, second has 1.0 in its first min(3, VLMAX) elements
   for (uint32_t i = 0; i < 2 * vlmax; i++) {
-    bf16_t exp = (i >= vlmax && i - vlmax < 3) ? 0x3F80 : vsrc[i];
+    bf16_t exp = (i >= vlmax && i - vlmax < 3) ? f32_to_bf16(1.0f) : vsrc[i];
     if (vdst[i] != exp) {
       if (errors < 10) printf("  vector[%u]: got 0x%04x expected 0x%04x\n", i, vdst[i], exp);
       errors++;

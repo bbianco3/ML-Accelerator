@@ -1,8 +1,9 @@
 # lenet: pretrained LeNet-5 inference
 
 `make run TEST=lenet` classifies 16 MNIST test digits on all accelerator
-cores and checks the result bit for bit against a C model of the same
-arithmetic.
+cores and checks the result against a C model of the same network: the
+output scores within the tolerance of `sw/common/check.h`, and every digit
+classified correctly.
 
 | File | What |
 |---|---|

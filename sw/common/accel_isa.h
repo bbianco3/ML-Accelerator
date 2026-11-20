@@ -107,13 +107,39 @@
   .type name, @function;          \
   name:
 
+// Element encoding (bf16.h). funct3 of the arithmetic and matrix
+// instructions carries it: custom-0 {vf, enc[1:0]}, custom-2 {enc[1:0], .t}.
+#ifndef ACCEL_NUMFMT
+#define ACCEL_NUMFMT 0
+#endif
+#define F3_VV (0 + ACCEL_NUMFMT)
+#define F3_VF (4 + ACCEL_NUMFMT)
+#define F3_M  (2 * ACCEL_NUMFMT)
+#define F3_MT (1 + 2 * ACCEL_NUMFMT)
+
 // Handy bf16 constants for vmv.v.x / .vf operands (load with `li`).
+#if ACCEL_NUMFMT == 1
+#define BF16_ZERO     0x0000
+#define BF16_ONE      0x3C00
+#define BF16_NEG_ONE  0xBC00
+#define BF16_HALF     0x3800
+#define BF16_INF      0x7C00
+#define BF16_NEG_INF  0xFC00
+#elif ACCEL_NUMFMT == 2
+#define BF16_ZERO     0x0000
+#define BF16_ONE      0x0038
+#define BF16_NEG_ONE  0x00B8
+#define BF16_HALF     0x0030
+#define BF16_INF      0x007E      // no infinity: +-448, the largest values
+#define BF16_NEG_INF  0x00FE
+#else
 #define BF16_ZERO     0x0000
 #define BF16_ONE      0x3F80
 #define BF16_NEG_ONE  0xBF80
 #define BF16_HALF     0x3F00
 #define BF16_INF      0x7F80
 #define BF16_NEG_INF  0xFF80
+#endif
 
 // ---------------------------------------------------------------------------
 // custom-1 (0x2B): vector configuration and memory
@@ -135,73 +161,73 @@
 // custom-0 (0x0B): bf16 vector arithmetic.   .vv: op1 = vs1   .vf: op1 = x[rs1][15:0]
 // ---------------------------------------------------------------------------
 .macro vfadd.vv vd, vs2, vs1
-  .insn r 0x0B, 0, 0x00, \vd, \vs1, \vs2
+  .insn r 0x0B, F3_VV, 0x00, \vd, \vs1, \vs2
 .endm
 .macro vfadd.vf vd, vs2, rs1
-  .insn r 0x0B, 4, 0x00, \vd, \rs1, \vs2
+  .insn r 0x0B, F3_VF, 0x00, \vd, \rs1, \vs2
 .endm
 .macro vfsub.vv vd, vs2, vs1
-  .insn r 0x0B, 0, 0x01, \vd, \vs1, \vs2
+  .insn r 0x0B, F3_VV, 0x01, \vd, \vs1, \vs2
 .endm
 .macro vfsub.vf vd, vs2, rs1
-  .insn r 0x0B, 4, 0x01, \vd, \rs1, \vs2
+  .insn r 0x0B, F3_VF, 0x01, \vd, \rs1, \vs2
 .endm
 .macro vfmul.vv vd, vs2, vs1
-  .insn r 0x0B, 0, 0x02, \vd, \vs1, \vs2
+  .insn r 0x0B, F3_VV, 0x02, \vd, \vs1, \vs2
 .endm
 .macro vfmul.vf vd, vs2, rs1
-  .insn r 0x0B, 4, 0x02, \vd, \rs1, \vs2
+  .insn r 0x0B, F3_VF, 0x02, \vd, \rs1, \vs2
 .endm
 .macro vfmax.vv vd, vs2, vs1
-  .insn r 0x0B, 0, 0x03, \vd, \vs1, \vs2
+  .insn r 0x0B, F3_VV, 0x03, \vd, \vs1, \vs2
 .endm
 .macro vfmax.vf vd, vs2, rs1
-  .insn r 0x0B, 4, 0x03, \vd, \rs1, \vs2
+  .insn r 0x0B, F3_VF, 0x03, \vd, \rs1, \vs2
 .endm
 .macro vfmin.vv vd, vs2, vs1
-  .insn r 0x0B, 0, 0x04, \vd, \vs1, \vs2
+  .insn r 0x0B, F3_VV, 0x04, \vd, \vs1, \vs2
 .endm
 .macro vfmin.vf vd, vs2, rs1
-  .insn r 0x0B, 4, 0x04, \vd, \rs1, \vs2
+  .insn r 0x0B, F3_VF, 0x04, \vd, \rs1, \vs2
 .endm
 // vd = vd + vs1 * vs2        (operand order as in RVV)
 .macro vfmacc.vv vd, vs1, vs2
-  .insn r 0x0B, 0, 0x05, \vd, \vs1, \vs2
+  .insn r 0x0B, F3_VV, 0x05, \vd, \vs1, \vs2
 .endm
 // vd = vd + x[rs1] * vs2
 .macro vfmacc.vf vd, rs1, vs2
-  .insn r 0x0B, 4, 0x05, \vd, \rs1, \vs2
+  .insn r 0x0B, F3_VF, 0x05, \vd, \rs1, \vs2
 .endm
 // vd[0] = vs1[0] + sum(vs2[0..vl-1])   (sequential fp32, rounded once)
 .macro vfredsum.vs vd, vs2, vs1
-  .insn r 0x0B, 0, 0x08, \vd, \vs1, \vs2
+  .insn r 0x0B, F3_VV, 0x08, \vd, \vs1, \vs2
 .endm
 // vd[0] = x[rs1] + sum(vs2[0..vl-1])
 .macro vfredsum.vf vd, vs2, rs1
-  .insn r 0x0B, 4, 0x08, \vd, \rs1, \vs2
+  .insn r 0x0B, F3_VF, 0x08, \vd, \rs1, \vs2
 .endm
 // vd[0] = max(vs1[0], vs2[0..vl-1])
 .macro vfredmax.vs vd, vs2, vs1
-  .insn r 0x0B, 0, 0x09, \vd, \vs1, \vs2
+  .insn r 0x0B, F3_VV, 0x09, \vd, \vs1, \vs2
 .endm
 .macro vfredmax.vf vd, vs2, rs1
-  .insn r 0x0B, 4, 0x09, \vd, \rs1, \vs2
+  .insn r 0x0B, F3_VF, 0x09, \vd, \rs1, \vs2
 .endm
 // vd[i] = vs1[i]           (i < vl)
 .macro vmv.v.v vd, vs1
-  .insn r 0x0B, 0, 0x10, \vd, \vs1, x0
+  .insn r 0x0B, F3_VV, 0x10, \vd, \vs1, x0
 .endm
 // vd[i] = x[rs1][15:0]     (i < vl)
 .macro vmv.v.x vd, rs1
-  .insn r 0x0B, 4, 0x10, \vd, \rs1, x0
+  .insn r 0x0B, F3_VF, 0x10, \vd, \rs1, x0
 .endm
 // x[rd] = zero_extend(vs2[0])
 .macro vmv.x.s rd, vs2
-  .insn r 0x0B, 0, 0x11, \rd, x0, \vs2
+  .insn r 0x0B, F3_VV, 0x11, \rd, x0, \vs2
 .endm
 // vd[0] = x[rs1][15:0]     (if vl > 0)
 .macro vmv.s.x vd, rs1
-  .insn r 0x0B, 4, 0x12, \vd, \rs1, x0
+  .insn r 0x0B, F3_VF, 0x12, \vd, \rs1, x0
 .endm
 
 // ---------------------------------------------------------------------------
@@ -210,34 +236,34 @@
 // ---------------------------------------------------------------------------
 // tile[td] row r <- mem[base + r*stride], r = 0..MAT_DIM-1
 .macro mld td, base, stride
-  .insn r 0x5B, 0, 0x00, \td, \base, \stride
+  .insn r 0x5B, F3_M, 0x00, \td, \base, \stride
 .endm
 // tile[ts] row r -> mem[base + r*stride]
 .macro mst ts, base, stride
-  .insn r 0x5B, 0, 0x01, \ts, \base, \stride
+  .insn r 0x5B, F3_M, 0x01, \ts, \base, \stride
 .endm
 // bf16(acc[as]) row r -> mem[base + r*stride]
 .macro msta as, base, stride
-  .insn r 0x5B, 0, 0x02, \as, \base, \stride
+  .insn r 0x5B, F3_M, 0x02, \as, \base, \stride
 .endm
 // Transposed (".t") forms: memory row r <-> register COLUMN r, i.e. the
 // matrix is stored column-major in memory. Same alignment rules.
 .macro mld.t td, base, stride
-  .insn r 0x5B, 1, 0x00, \td, \base, \stride
+  .insn r 0x5B, F3_MT, 0x00, \td, \base, \stride
 .endm
 .macro mst.t ts, base, stride
-  .insn r 0x5B, 1, 0x01, \ts, \base, \stride
+  .insn r 0x5B, F3_MT, 0x01, \ts, \base, \stride
 .endm
 .macro msta.t as, base, stride
-  .insn r 0x5B, 1, 0x02, \as, \base, \stride
+  .insn r 0x5B, F3_MT, 0x02, \as, \base, \stride
 .endm
 // acc[ad] = 0
 .macro mzero ad
-  .insn r 0x5B, 0, 0x03, \ad, x0, x0
+  .insn r 0x5B, F3_M, 0x03, \ad, x0, x0
 .endm
 // acc[ad] += tile[ta] x tile[tb]
 .macro mmacc ad, ta, tb
-  .insn r 0x5B, 0, 0x04, \ad, \ta, \tb
+  .insn r 0x5B, F3_M, 0x04, \ad, \ta, \tb
 .endm
 
 // ---------------------------------------------------------------------------

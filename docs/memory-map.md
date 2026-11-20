@@ -1,4 +1,4 @@
-# Memory map and register map
+# Memory map and host registers
 
 ## Platform address map (simulation)
 
@@ -9,7 +9,7 @@ the host software and the simulator's C code.
 
 | Range | Size | What | Host access | Accelerator access |
 |---|---|---|---|---|
-| `0x1000_0000 - 0x1000_0FFF` | 4 KiB | Accelerator control registers | AXI4-Lite through the RTL (timed) | -- |
+| `0x1000_0000 - 0x1000_0FFF` | 4 KiB | Host registers of the accelerator | AXI4-Lite through the RTL (timed) | -- |
 | `0x1100_0000 - 0x1100_0FFF` | 4 KiB | Simulation control device | functional (C model) | -- |
 | `0x2000_0000 - 0x20FF_FFFF` | `SPAD_KB` KiB used of 16 MiB | **Scratchpad** of the core making the access (private per core) | -- | 1-cycle SRAM |
 | `0x4000_0000 - 0x7FFF_FFFF` | 1 GiB | **HBM** | functional; memory-access time inside the region of interest | AXI4 master (timed) |
@@ -58,7 +58,11 @@ in simulation. On real silicon you would use a UART and a timer instead.
 The simulator's ELF loader copies every segment to its memory before reset,
 so kernels and `.hbm.data` are already in HBM when `main()` starts.
 
-## Accelerator register map (AXI4-Lite)
+## Host registers (AXI4-Lite)
+
+These are the host registers of the reference design, which the driver
+(`accel.h`) and the tests use. Step 1 of the project
+([project-guide.md](project-guide.md#milestones)) is `ID` and `CFG0..3`.
 
 Offsets from `ACCEL_CSR_BASE` (`0x1000_0000`). All registers are 32 bits and
 accessed as whole words (`WSTRB` is ignored). Unmapped reads return 0.

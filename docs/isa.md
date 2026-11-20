@@ -1,5 +1,9 @@
 # Accelerator ISA reference
 
+This is the instruction set of the reference design, which the kernels in
+`sw/tests/` are written in. You may change it together with your hardware
+and kernels ([project-guide.md](project-guide.md#what-is-fixed-and-what-is-yours)).
+
 The accelerator's control core executes 32-bit RISC-V-encoded instructions:
 the **RV32I base subset** for control flow and address arithmetic, plus
 four **custom extensions** in the RISC-V custom opcode space:
@@ -224,8 +228,8 @@ core to fault is reported (`ERR_CORE`) and the others are stopped:
 
 1. Pick a free `funct7`/`funct3` in one of the custom opcodes (custom-3
    has plenty of room) and add a constant to `accel_pkg.sv`.
-2. Implement it: decode in `accel_core.sv` (`S_EXEC`), and the datapath in
-   `accel_vpu.sv` / `accel_mxu.sv` or a new unit.
+2. Implement it: decode in the control core, and the datapath in the
+   vector unit, the matrix unit or a new unit.
 3. Add an assembler macro to `sw/common/accel_isa.h`.
 4. Add the reference semantics to `sw/common/bf16.h` (if numeric) and a test
    under `sw/tests/`.
