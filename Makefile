@@ -22,8 +22,8 @@ SHELL := /bin/bash -o pipefail
 # ---------------- hardware configuration (RTL parameters) ----------------
 VLEN         ?= 256
 MAT_DIM      ?= 16
-NUM_TREGS    ?= 4
-NUM_ACCS     ?= 2
+NUM_TREGS    ?= 2
+NUM_ACCS     ?= 1
 MXU_ROWS     ?= 4
 HBM_DATA_W   ?= 256
 ICACHE_LINES ?= 16

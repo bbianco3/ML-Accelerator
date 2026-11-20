@@ -2,15 +2,15 @@
   "_doc": "Settings shared by simulation, synthesis and scoring (tools/competition.py, docs/competition.md). 'design' and 'synth' are yours to tune; 'platform' is fixed for everyone.",
 
   "design": {
-    "clk_period_ns": 2.5,
+    "clk_period_ns": 1.2,
     "max_area_um2": 200000
   },
 
   "synth": {
     "time_limit_min": 0,
     "extra_passes": 0,
-    "retime": false,
-    "clock_gating": false,
+    "retime": true,
+    "clock_gating": true,
     "max_fanout": 0,
     "buffer_ports": false
   },

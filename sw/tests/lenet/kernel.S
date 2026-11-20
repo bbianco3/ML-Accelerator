@@ -218,23 +218,23 @@ conv_layer:
   // ---- 1. im2col: up to MAT_DIM patch rows ----
   lw    t0, C_PATCH(a0)
   mv    t1, s8
+  lw    t3, C_NPIX(a0)            // the loop's constants, in registers
+  lw    t4, C_SHAPE(a0)           // (t3-t6 and ra are free until STAT)
+  lw    t5, C_INPX(a0)
+  lw    t6, C_OUTW(a0)
+  lw    ra, C_PROW(a0)
 .Lrow:
-  lw    t2, C_NPIX(a0)
-  bge   a3, t2, .Lrow_next        // past the band: leave the row as it is
-  lw    t2, C_SHAPE(a0)           // K runs of K*Cin elements, an input row apart
-  hcpy2d t0, a5, t2               // input window -> patch row
+  bge   a3, t3, .Lrow_next        // past the band: leave the row as it is
+  hcpy2d t0, a5, t4               // input window -> patch row (K runs of K*Cin)
   addi  a3, a3, 1                 // next pixel
   addi  a4, a4, 1
-  lw    t2, C_INPX(a0)
-  add   a5, a5, t2
-  lw    t2, C_OUTW(a0)
-  bne   a4, t2, .Lrow_next
+  add   a5, a5, t5
+  bne   a4, t6, .Lrow_next
   li    a4, 0                     // second output row of the band
   lw    t2, C_INROW(a0)
   add   a5, s10, t2
 .Lrow_next:
-  lw    t2, C_PROW(a0)
-  add   t0, t0, t2
+  add   t0, t0, ra                // next patch row
   addi  t1, t1, -1
   bnez  t1, .Lrow
   STAT  0

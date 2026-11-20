@@ -606,6 +606,13 @@ module accel_core
   // hcpy2d repeats this for cp_rows runs: each run starts cp_stride bytes
   // after the previous run's start (cp_srow), and the destination just keeps
   // going, so the runs land back to back (one im2col patch row).
+  //
+  // Posted writes: a write to the scratchpad is not waited for (its response
+  // comes the next cycle and is only counted, cp_post), so a chunk takes
+  // RD, RD_WAIT, WR = 3 cycles, and a same-beat chunk 1. A request to HBM
+  // waits until no posted write is outstanding, so responses never pass each
+  // other. The instruction's last write is always waited for, so a bus error
+  // on it is reported by this instruction.
   localparam int CNT_W  = OFF_W + 1;              // holds 0 .. BYTES
   localparam int ONES_W = BYTES + 1;
 
@@ -623,6 +630,9 @@ module accel_core
   logic [HBM_DATA_W-1:0] cp_wdata;
   logic [BYTES-1:0]      cp_wstrb;
   logic [2*HBM_DATA_W-1:0] cp_dbl;
+  logic [1:0]            cp_post;                 // posted writes, response not back yet
+  logic                  cp_src_spad, cp_dst_spad, cp_last;
+  logic                  cp_rd_ok, cp_wr_ok, cp_wr_post, cp_rsp_post, cp_adv;
 
   always_comb begin
     cp_soff   = cp_src[OFF_W-1:0];
@@ -642,6 +652,28 @@ module accel_core
   end
 
   // Who uses the memory port: FETCH (pc), MEM (load/store) or MROW (tile row)
+  assign cp_src_spad = (cp_src[31:SPAD_WINDOW_W] == SPAD_BASE[31:SPAD_WINDOW_W]);
+  assign cp_dst_spad = (cp_dst[31:SPAD_WINDOW_W] == SPAD_BASE[31:SPAD_WINDOW_W]);
+  assign cp_last     = (cp_left == 33'(cp_chunk)) && (cp_rows == 8'd1);
+  assign cp_rd_ok    = (cp_post == 2'd0) || cp_src_spad;   // posted writes all go to the scratchpad
+  assign cp_wr_ok    = (cp_post == 2'd0) || cp_dst_spad;
+  assign cp_wr_post  = cp_dst_spad && !cp_last;
+  // a response while posted writes are outstanding is theirs (they were sent first)
+  assign cp_rsp_post = mem_resp_valid && (cp_post != 2'd0) &&
+                       (state == S_HCPY_RD || state == S_HCPY_RD_WAIT ||
+                        state == S_HCPY_WR || state == S_HCPY_WR_WAIT);
+  // the current chunk is done: posted write taken, or a waited-for write answered
+  assign cp_adv      = ((state == S_HCPY_WR) && cp_wr_ok && cp_wr_post && mem_req_ready) ||
+                       ((state == S_HCPY_WR_WAIT) && mem_resp_valid && (cp_post == 2'd0));
+
+  always_ff @(posedge clk) begin
+    if (!rst_n || (state == S_EXEC))
+      cp_post <= 2'd0;
+    else
+      cp_post <= cp_post + 2'((state == S_HCPY_WR) && cp_wr_ok && cp_wr_post && mem_req_ready)
+                         - 2'(cp_rsp_post);
+  end
+
   //---------------------------------------------------------------------------
   // mld / mst / msta: rows are requested back to back
   //---------------------------------------------------------------------------
@@ -681,11 +713,11 @@ module accel_core
         mem_req_wstrb = ls_mask << ls_off;
       end
       S_HCPY_RD: begin
-        mem_req_valid = 1'b1;
+        mem_req_valid = cp_rd_ok;
         mem_req_addr  = cp_src;
       end
       S_HCPY_WR: begin
-        mem_req_valid = 1'b1;
+        mem_req_valid = cp_wr_ok;
         mem_req_write = 1'b1;
         mem_req_addr  = cp_dst;
         mem_req_wdata = cp_wdata;
@@ -768,8 +800,8 @@ module accel_core
           stop_insn = insn;
         end
       end
-      S_MEM_WAIT, S_HCPY_RD_WAIT, S_HCPY_WR_WAIT:
-        if (mem_resp_valid && mem_resp_err) begin
+      S_MEM_WAIT, S_HCPY_RD, S_HCPY_RD_WAIT, S_HCPY_WR, S_HCPY_WR_WAIT:
+        if (mem_resp_valid && mem_resp_err) begin    // (hcpy: also a posted write's)
         stop_now = 1'b1; stop_cause = ERR_BUS; stop_insn = insn;
       end
       // a bad row: stop once the rows still in flight have come back, so no
@@ -977,19 +1009,19 @@ module accel_core
         end
 
         // ---- hcpy: read a source beat, write chunks of it ----
-        S_HCPY_RD: if (mem_req_ready) state <= S_HCPY_RD_WAIT;
+        S_HCPY_RD: if (cp_rd_ok && mem_req_ready) state <= S_HCPY_RD_WAIT;
 
         S_HCPY_RD_WAIT: begin
-          if (mem_resp_valid) begin
+          if (mem_resp_valid && cp_post == 2'd0) begin   // (else: a posted write's)
             cp_beat <= mem_resp_rdata;
             state   <= S_HCPY_WR;
           end
         end
 
-        S_HCPY_WR: if (mem_req_ready) state <= S_HCPY_WR_WAIT;
-
-        S_HCPY_WR_WAIT: begin
-          if (mem_resp_valid) begin
+        S_HCPY_WR, S_HCPY_WR_WAIT: begin
+          if (state == S_HCPY_WR && cp_wr_ok && !cp_wr_post && mem_req_ready)
+            state <= S_HCPY_WR_WAIT;                // wait for this write's response
+          if (cp_adv) begin                         // the chunk is written
             cp_src  <= cp_src + 32'(cp_chunk);
             cp_dst  <= cp_dst + 32'(cp_chunk);
             cp_left <= cp_left - 33'(cp_chunk);
