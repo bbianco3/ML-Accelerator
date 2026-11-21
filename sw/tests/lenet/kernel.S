@@ -73,6 +73,7 @@
 .equ C_BROW2,    92
 .equ C_COUTPAD,  96
 .equ C_SHAPE,    100
+.equ C_OSTEP,    104
 
 // struct fc_desc
 .equ F_IN,        0
@@ -86,6 +87,9 @@
 .equ F_WKT,      32
 .equ F_NPAD,     36
 .equ F_RELU,     40
+.equ F_INKT,     44
+.equ F_WROW,     48
+.equ F_WNT,      52
 
 // Register use
 //   main (kept across calls): s0 X row, s1 my HBM descriptor, s2 working
@@ -110,12 +114,12 @@ ACCEL_KERNEL(lenet_kernel)        // a0 = per-core descriptors in HBM
   slli  t0, t0, D_SHIFT
   add   s1, a0, t0
   lw    s2, D_WORK(s1)            // working copy (in the scratchpad if it fits)
+  lw    s8, D_MATDIM(s1)          // (vcopy uses s7/s8)
+  slli  s7, s8, 1
   mv    t0, s2
   mv    t1, s1
   li    t2, D_BYTES
   jal   vcopy
-  lw    s8, D_MATDIM(s2)
-  slli  s7, s8, 1
   lw    s6, D_NMINE(s2)
   lw    s3, D_IMG(s2)
   lw    s5, D_LOGIT(s2)
@@ -278,6 +282,7 @@ conv_layer:
   lw    t1, C_POOLW(a0)
   lw    gp, C_BROW(a0)            // next pixel in the row
   lw    ra, C_BROW2(a0)           // same pixel in the second row
+  lw    a3, C_OSTEP(a0)           // pooled output: pixel to pixel (HWC, or X tiles)
 .Lpx:
   lw    t2, C_COUT(a0)            // channels left
   mv    t3, t0                    // this chunk of channels, top-left pixel
@@ -305,8 +310,7 @@ conv_layer:
   bnez     t2, .Lch
   lw    t2, C_COUT(a0)            // pooled output is unpadded HWC (not
   hcpy  tp, t0, t2                // VLEN/8-aligned), so copy it out
-  slli  t2, t2, 1
-  add   tp, tp, t2
+  add   tp, tp, a3
   slli  t2, gp, 1                 // two pixels right
   add   t0, t0, t2
   addi  t1, t1, -1
@@ -324,13 +328,19 @@ conv_layer:
 // fc_layer(a0 = fc descriptor): out[D][n_pad] = act(in[D][k_pad] x W + bias)
 //=============================================================================
 fc_layer:
+  // Tile layouts come from the descriptor: the weights are stored as
+  // contiguous D x D tiles (and fc1's input too, when conv2 wrote it tiled),
+  // so their mld reads one burst of consecutive bytes.
   mv    s11, ra
   lw    t0, F_NNT(a0)
-  lw    t1, F_W(a0)
+  lw    t1, F_W(a0)               // weight tiles of this output column tile
   lw    t5, F_OUT(a0)
-  lw    gp, F_OUTROW(a0)          // weight / output row stride
-  lw    ra, F_INROW(a0)
-  lw    t6, F_WKT(a0)
+  lw    gp, F_OUTROW(a0)          // output row stride
+  lw    ra, F_INROW(a0)           // input row stride
+  lw    t6, F_WKT(a0)             // weights: next k tile
+  lw    a1, F_INKT(a0)            // input: next k tile
+  lw    a2, F_WNT(a0)             // weights: next column tile
+  lw    a3, F_WROW(a0)            // weight row stride
 .Lfnt:
   mzero acc0
   lw    t2, F_NKT(a0)
@@ -338,14 +348,14 @@ fc_layer:
   mv    t4, t1
 .Lfkt:
   mld   tr0, t3, ra
-  mld   tr1, t4, gp
+  mld   tr1, t4, a3
   mmacc acc0, tr0, tr1
-  add   t3, t3, s7
+  add   t3, t3, a1
   add   t4, t4, t6
   addi  t2, t2, -1
   bnez  t2, .Lfkt
   msta  acc0, t5, gp
-  add   t1, t1, s7
+  add   t1, t1, a2
   add   t5, t5, s7
   addi  t0, t0, -1
   bnez  t0, .Lfnt
@@ -389,8 +399,31 @@ bias_relu:
 9:
   ret
 
-// vcopy(t0 = dst, t1 = src, t2 = bytes): both VLEN/8-aligned
+// vcopy(t0 = dst, t1 = src, t2 = bytes): both VLEN/8-aligned; uses t3-t6, tr0
 vcopy:
+  // Whole tiles first, through tr0: mld requests its MAT_DIM rows back to
+  // back, so a tile from HBM costs about one memory latency instead of one
+  // per row (a vle16 waits for each row). Needs both addresses aligned to a
+  // tile row (MAT_DIM*2 bytes); the rest goes through the vector unit.
+  or    t3, t0, t1
+  addi  t4, s7, -1
+  and   t3, t3, t4
+  bnez  t3, 5f                    // not tile-row aligned: vector unit only
+  mv    t5, s8                    // t6 = bytes per tile = MAT_DIM x MAT_DIM*2
+  li    t6, 0
+2:
+  add   t6, t6, s7
+  addi  t5, t5, -1
+  bnez  t5, 2b
+3:
+  bltu  t2, t6, 5f
+  mld   tr0, t1, s7               // MAT_DIM contiguous rows
+  mst   tr0, t0, s7
+  add   t0, t0, t6
+  add   t1, t1, t6
+  sub   t2, t2, t6
+  j     3b
+5:
   srli  t2, t2, 1
 1:
   beqz  t2, 9f

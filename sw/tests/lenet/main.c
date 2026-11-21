@@ -41,12 +41,14 @@ struct conv_desc {            // 128 bytes
   uint32_t w_ktile_bytes, band_row_bytes;
   uint32_t out_w, n_bands, cout, pool_w, in_band_bytes, npix, band_row2_bytes, cout_pad;
   uint32_t shape;                                   // hcpy2d operand: {in_row_bytes, k, run}
-  uint32_t pad[6];
+  uint32_t out_px_bytes;                            // pooled output: bytes from pixel to pixel
+  uint32_t pad[5];
 };
 struct fc_desc {              // 64 bytes
   uint32_t in, out, w, bias;
   uint32_t in_row_bytes, out_row_bytes, n_ktiles, n_ntiles, w_ktile_bytes, n_pad, relu;
-  uint32_t pad[5];
+  uint32_t in_ktile_bytes, w_row_bytes, w_ntile_bytes;  // input / weight tile layout
+  uint32_t pad[2];
 };
 struct lenet_desc {           // one per core, 1024 bytes apart
   uint32_t work;              // where the kernel keeps its working copy
@@ -67,7 +69,10 @@ _Static_assert(offsetof(struct lenet_desc, fc) == 336, "kernel.S D_FC0");
 _Static_assert(offsetof(struct conv_desc, cout_pad) == 96, "kernel.S C_COUTPAD");
 _Static_assert(offsetof(struct conv_desc, shape) == 100, "kernel.S C_SHAPE");
 _Static_assert(sizeof(struct conv_desc) == 128, "kernel.S D_CONV1");
+_Static_assert(offsetof(struct conv_desc, out_px_bytes) == 104, "kernel.S C_OSTEP");
 _Static_assert(offsetof(struct fc_desc, relu) == 40, "kernel.S F_RELU");
+_Static_assert(offsetof(struct fc_desc, w_ntile_bytes) == 52, "kernel.S F_WNT");
+_Static_assert(sizeof(struct fc_desc) == 64, "kernel.S D_FC1");
 _Static_assert(sizeof(struct lenet_desc) == 1024, "kernel.S D_SHIFT");
 #define DESC_USED 528
 
@@ -119,7 +124,9 @@ struct conv_geom {
 };
 struct fc_geom {
   uint32_t k_pad, n_pad;
-  bf16_t *w, *bias;           // [k_pad][n_pad], [n_pad], in HBM
+  bf16_t *w, *bias;           // [k_pad][n_pad], [n_pad] (for the reference model)
+  bf16_t *wt;                 // the same weights tiled for the accelerator, in HBM:
+                              // D x D tiles, each contiguous, column tiles outer
 };
 
 // Convolution weights in im2col order: row kk = (ky*K + kx)*Cin + ci, column co.
@@ -148,7 +155,7 @@ static void pack_conv(struct conv_geom *g, const bf16_t *w, const bf16_t *b, uin
 
 // fc1's input is conv2's pooled output in HWC order; PyTorch flattens CHW.
 static void pack_fc(struct fc_geom *g, int l, uint32_t k_pad, const bf16_t *w, const bf16_t *b,
-                    uint32_t CP) {
+                    uint32_t CP, uint32_t D) {
   g->k_pad = k_pad;
   g->n_pad = rup((uint32_t)FC_N[l], CP);
   g->w = hbm_alloc(g->k_pad * g->n_pad * 2, HBM_ALIGN);
@@ -166,6 +173,17 @@ static void pack_fc(struct fc_geom *g, int l, uint32_t k_pad, const bf16_t *w, c
     }
     g->bias[n] = bf16_import(b[n]);
   }
+  // Tiled copy: tile (kt, nt) is D rows of D elements, contiguous, at tile
+  // index nt * n_ktiles + kt. An mld of a tile then reads D*D*2 consecutive
+  // bytes, which the core sends to HBM as one burst (one outstanding request
+  // instead of D; the HBM accepts only a few at a time).
+  const uint32_t nkt = g->k_pad / D, nnt = g->n_pad / D;
+  g->wt = hbm_alloc(g->k_pad * g->n_pad * 2, HBM_ALIGN);
+  for (uint32_t nt = 0; nt < nnt; nt++)
+    for (uint32_t kt = 0; kt < nkt; kt++)
+      for (uint32_t r = 0; r < D; r++)
+        for (uint32_t c = 0; c < D; c++)
+          g->wt[((nt * nkt + kt) * D + r) * D + c] = g->w[(kt * D + r) * g->n_pad + nt * D + c];
 }
 
 //---------------------------------------------------------------------------
@@ -242,9 +260,13 @@ int main(void) {
   pack_conv(&cg[0], b.cw[0], b.cb[0], D, CP);
   pack_conv(&cg[1], b.cw[1], b.cb[1], D, CP);
   struct fc_geom fg[3];
-  pack_fc(&fg[0], 0, rup(400, D), b.fw[0], b.fb[0], CP);
-  pack_fc(&fg[1], 1, fg[0].n_pad, b.fw[1], b.fb[1], CP);
-  pack_fc(&fg[2], 2, fg[1].n_pad, b.fw[2], b.fb[2], CP);
+  pack_fc(&fg[0], 0, rup(400, D), b.fw[0], b.fb[0], CP, D);
+  pack_fc(&fg[1], 1, fg[0].n_pad, b.fw[1], b.fb[1], CP, D);
+  pack_fc(&fg[2], 2, fg[1].n_pad, b.fw[2], b.fb[2], CP, D);
+  // fc1's input X (one image per row) is tiled too when conv2 has exactly D
+  // output channels: then a pooled pixel's channels are one row of one X
+  // tile, and conv2 writes them there directly (pixel p -> tile p).
+  const int x_tiled = (C2.cout == (int)D);
 
   // ---- 3. plan the per-core working memory ----
   //  conv phase: [desc][weights+bias][patch tile | image][band][pool1]
@@ -303,7 +325,7 @@ int main(void) {
     d->pool1 = local + o_pool1;
     d->x = xaddr;
     d->x_bytes = x_bytes;
-    d->x_row_bytes = fg[0].k_pad * 2;
+    d->x_row_bytes = x_tiled ? D * 2 : fg[0].k_pad * 2;   // image to image
     d->logit = (uint32_t)(uintptr_t)logits + c * logit_row;
     d->logit_step = NC * logit_row;
     d->mat_dim = D;
@@ -341,19 +363,24 @@ int main(void) {
         return 1;
       }
       cd->shape = (cd->in_row_bytes << 16) | (cd->k << 8) | cd->run_elems;
+      cd->out_px_bytes = (l == 1 && x_tiled) ? D * D * 2 : (uint32_t)g->s.cout * 2;
     }
     for (int l = 0; l < 3; l++) {
       const struct fc_geom *g = &fg[l];
       struct fc_desc *fd = &d->fc[l];
       fd->in = (l == 0) ? xaddr : local + o_h[l - 1];
       fd->out = local + o_h[l];
-      fd->w = (uint32_t)(uintptr_t)g->w;
+      fd->w = (uint32_t)(uintptr_t)g->wt;
       fd->bias = (uint32_t)(uintptr_t)g->bias;
-      fd->in_row_bytes = g->k_pad * 2;
+      const int tiled_in = (l == 0) && x_tiled;
+      fd->in_row_bytes = tiled_in ? D * 2 : g->k_pad * 2;
+      fd->in_ktile_bytes = tiled_in ? D * D * 2 : D * 2;
+      fd->w_row_bytes = D * 2;
+      fd->w_ntile_bytes = (g->k_pad / D) * D * D * 2;
       fd->out_row_bytes = g->n_pad * 2;
       fd->n_ktiles = g->k_pad / D;
       fd->n_ntiles = g->n_pad / D;
-      fd->w_ktile_bytes = D * g->n_pad * 2;
+      fd->w_ktile_bytes = D * D * 2;
       fd->n_pad = g->n_pad;
       fd->relu = (l < 2);
     }

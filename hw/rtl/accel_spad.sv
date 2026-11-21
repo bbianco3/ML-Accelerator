@@ -37,6 +37,7 @@ module accel_spad
   input  logic [31:0]             req_addr,
   input  logic [HBM_DATA_W-1:0]   req_wdata,
   input  logic [HBM_DATA_W/8-1:0] req_wstrb,
+  input  logic [7:0]              req_len,     // read burst beats - 1 (HBM only)
   output logic                    resp_valid,
   output logic [HBM_DATA_W-1:0]   resp_rdata,
   output logic                    resp_err,
@@ -48,6 +49,7 @@ module accel_spad
   output logic [31:0]             hbm_req_addr,
   output logic [HBM_DATA_W-1:0]   hbm_req_wdata,
   output logic [HBM_DATA_W/8-1:0] hbm_req_wstrb,
+  output logic [7:0]              hbm_req_len,
   input  logic                    hbm_resp_valid,
   input  logic [HBM_DATA_W-1:0]   hbm_resp_rdata,
   input  logic                    hbm_resp_err
@@ -77,6 +79,7 @@ module accel_spad
   assign hbm_req_write = req_write;
   assign hbm_req_addr  = req_addr;
   assign hbm_req_wdata = req_wdata;
+  assign hbm_req_len   = req_len;           // (the core never sends a burst here)
   assign hbm_req_wstrb = req_wstrb;
 
   // The scratchpad is always ready; HBM is ready when the AXI master is idle.

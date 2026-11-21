@@ -24,8 +24,10 @@
 // Writes are one at a time, and never overlap reads: a write is taken only
 // when no read is in flight, and nothing is taken until its B response.
 //
-// AXI side: every transaction is a single beat (LEN = 0), full bus width
-// (SIZE = log2(bytes per beat)), INCR burst, ID = ID_VALUE.
+// AXI side: full bus width (SIZE = log2(bytes per beat)), INCR, ID = ID_VALUE.
+// Writes are single beats. Reads are single beats, or a burst of req_len+1
+// beats when the core loads a whole tile whose rows are back to back in HBM
+// (one entry in the HBM's queue of outstanding requests instead of MAT_DIM).
 //-----------------------------------------------------------------------------
 
 module accel_axi_master
@@ -46,6 +48,7 @@ module accel_axi_master
   input  logic [31:0]             req_addr,
   input  logic [HBM_DATA_W-1:0]   req_wdata,
   input  logic [HBM_DATA_W/8-1:0] req_wstrb,
+  input  logic [7:0]              req_len,     // reads: burst of req_len+1 beats from req_addr
   output logic                    resp_valid,
   output logic [HBM_DATA_W-1:0]   resp_rdata,
   output logic                    resp_err,
@@ -94,7 +97,7 @@ module accel_axi_master
   // address is waiting for ARREADY (one read per 2 cycles at best).
   //
   // Writes: IDLE --> W (AW and W offered) --> B (wait for the response) --> IDLE
-  localparam int MAX_RD = 16;
+  localparam int MAX_RD = 32;                // beats in flight (a 16-beat tile burst + more)
   localparam int RC_W   = $clog2(MAX_RD + 1);
 
   typedef enum logic [1:0] {W_IDLE, W_W, W_B} wstate_e;
@@ -105,10 +108,13 @@ module accel_axi_master
   logic [BYTES-1:0]        wstrb_q;
   logic                    aw_done, w_done;   // which write channels finished
   logic                    ar_pend;           // a read address waiting for ARREADY
-  logic [RC_W-1:0]         rd_out;            // reads taken, data not back yet
+  logic [RC_W-1:0]         rd_out;            // beats requested, not back yet
+  logic [7:0]              arlen_q;           // burst length of the waiting AR
+  logic [RC_W:0]           rd_room;           // rd_out + this request's beats
 
   logic rd_ok, wr_ok, take_rd, take_wr, ar_hs, r_hs;
-  assign rd_ok   = (wstate == W_IDLE) && !ar_pend && (rd_out != RC_W'(MAX_RD));
+  assign rd_room = (RC_W+1)'(rd_out) + (RC_W+1)'(req_len) + (RC_W+1)'(1);
+  assign rd_ok   = (wstate == W_IDLE) && !ar_pend && (rd_room <= (RC_W+1)'(MAX_RD));
   assign wr_ok   = (wstate == W_IDLE) && !ar_pend && (rd_out == '0);
   assign req_ready = req_write ? wr_ok : rd_ok;
   assign take_rd = req_valid && !req_write && rd_ok;
@@ -125,6 +131,7 @@ module accel_axi_master
       aw_done    <= 1'b0;
       w_done     <= 1'b0;
       ar_pend    <= 1'b0;
+      arlen_q    <= '0;
       rd_out     <= '0;
       resp_valid <= 1'b0;
       resp_rdata <= '0;
@@ -145,10 +152,13 @@ module accel_axi_master
       end
 
       // ---- reads ----
-      if (take_rd)    ar_pend <= 1'b1;
+      if (take_rd) begin
+        ar_pend <= 1'b1;
+        arlen_q <= req_len;
+      end
       else if (ar_hs) ar_pend <= 1'b0;
-      rd_out <= rd_out + RC_W'(take_rd) - RC_W'(r_hs);
-      if (r_hs) begin                           // single beat, so this is RLAST
+      rd_out <= rd_out + (take_rd ? RC_W'(req_len) + RC_W'(1) : '0) - RC_W'(r_hs);
+      if (r_hs) begin                           // one response pulse per beat
         resp_valid <= 1'b1;
         resp_rdata <= m_axi_rdata;
         resp_err   <= (m_axi_rresp != AXI_RESP_OKAY);
@@ -182,7 +192,7 @@ module accel_axi_master
   // Read address
   assign m_axi_arid    = HBM_ID_W'(ID_VALUE);
   assign m_axi_araddr  = HBM_ADDR_W'(addr_q);
-  assign m_axi_arlen   = 8'd0;                  // 1 beat
+  assign m_axi_arlen   = arlen_q;               // 1 beat, or an mld tile burst
   assign m_axi_arsize  = SIZE;
   assign m_axi_arburst = AXI_BURST_INCR;
   assign m_axi_arvalid = ar_pend;

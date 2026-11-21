@@ -89,6 +89,7 @@ module accel_core
   output logic [31:0]             mem_req_addr,
   output logic [HBM_DATA_W-1:0]   mem_req_wdata,
   output logic [HBM_DATA_W/8-1:0] mem_req_wstrb,
+  output logic [7:0]              mem_req_len,    // read burst: beats - 1 (else 0)
   input  logic                    mem_resp_valid,
   input  logic [HBM_DATA_W-1:0]   mem_resp_rdata,
   input  logic                    mem_resp_err
@@ -136,6 +137,7 @@ module accel_core
   logic [ROW_IDX_W:0]   mr_out;     // requests sent, response not back yet
   logic            mr_tgt;          // where those go: 1 = scratchpad, 0 = HBM
   logic            mr_err;          // a row came back with a bus error
+  logic            mr_burst;        // mld: all rows in one HBM read burst
 
   assign busy       = (state != S_IDLE);
   assign at_barrier = (state == S_BARRIER);
@@ -709,7 +711,9 @@ module accel_core
                        && ((mr_out == '0) || (mr_new_spad == mr_tgt));
   assign mr_hs       = mr_issue && mem_req_ready;
   assign mr_rsp      = (state == S_MROW) && mem_resp_valid;
-  assign mr_out_nxt  = mr_out + (ROW_IDX_W+1)'(mr_hs) - (ROW_IDX_W+1)'(mr_rsp);
+  // a burst is one request for all MAT_DIM rows
+  assign mr_out_nxt  = mr_out + (mr_hs ? (mr_burst ? (ROW_IDX_W+1)'(MAT_DIM) : (ROW_IDX_W+1)'(1)) : '0)
+                              - (ROW_IDX_W+1)'(mr_rsp);
 
   always_comb begin
     mem_req_valid = 1'b0;
@@ -717,6 +721,7 @@ module accel_core
     mem_req_addr  = pc;
     mem_req_wdata = '0;
     mem_req_wstrb = '0;
+    mem_req_len   = 8'd0;
     unique case (state)
       S_FETCH: begin
         mem_req_valid = (pc[1:0] == 2'b00) && !abort && !ic_hit;   // misses only
@@ -742,6 +747,7 @@ module accel_core
       end
       S_MROW: begin
         mem_req_valid = mr_issue;
+        mem_req_len   = mr_burst ? 8'(MAT_DIM - 1) : 8'd0;
         mem_req_write = (funct7 != MOP_LD);          // mst / msta
         mem_req_addr  = maddr;
         mem_req_wdata = HBM_DATA_W'(mxu_rd_data) << {moff, 3'b000};
@@ -853,6 +859,7 @@ module accel_core
       mr_out      <= '0;
       mr_tgt      <= 1'b0;
       mr_err      <= 1'b0;
+      mr_burst    <= 1'b0;
       ls_addr     <= '0;
       ls_write    <= 1'b0;
       ls_data     <= '0;
@@ -929,6 +936,11 @@ module accel_core
             mr_iss   <= '0;
             mr_out   <= '0;
             mr_err   <= 1'b0;
+            // HBM read burst: an mld whose rows are whole beats, back to back
+            // (stride = one beat), all inside one 4 KiB page (AXI rule)
+            mr_burst <= (funct7 == MOP_LD) && (ROW_BYTES == BYTES) && (rs2v == 32'(BYTES))
+                        && (rs1v[31:SPAD_WINDOW_W] != SPAD_BASE[31:SPAD_WINDOW_W])
+                        && (({1'b0, rs1v[11:0]} + 13'(MAT_DIM * BYTES - 1)) < 13'd4096);
             state    <= S_MROW;
           end
           else if (ex_mmacc)
@@ -995,7 +1007,7 @@ module accel_core
         S_MROW: begin
           mr_out <= mr_out_nxt;
           if (mr_hs) begin                          // a row request was taken
-            mr_iss <= mr_iss + (ROW_IDX_W+1)'(1);
+            mr_iss <= mr_burst ? (ROW_IDX_W+1)'(MAT_DIM) : mr_iss + (ROW_IDX_W+1)'(1);
             mrow   <= mrow + ROW_IDX_W'(1);
             maddr  <= maddr + rs2v;                 // + x[rstride]
             mr_tgt <= mr_new_spad;
@@ -1095,5 +1107,32 @@ module accel_core
       $display("[accel] cyc=%0d core=%0d pc=%08h insn=%08h", cycle_cnt, CORE_ID, pc, insn);
   end
   // synopsys translate_on
+
+  //===========================================================================
+  // Simulation only: how many cycles this core spends in each FSM state.
+  // Printed when the simulation ends; not synthesized (SYNTHESIS is defined
+  // by the synthesis script). S_EXEC cycles = instructions executed.
+  //===========================================================================
+`ifndef SYNTHESIS
+  longint unsigned prof_cycles [16];
+  initial for (int i = 0; i < 16; i++) prof_cycles[i] = 0;
+  always @(posedge clk)
+    if (rst_n && state != S_IDLE) prof_cycles[state] <= prof_cycles[state] + 1;
+  final begin
+    longint unsigned tot;
+    state_e          st;
+    tot = 0;
+    for (int i = 0; i < 16; i++) tot += prof_cycles[i];
+    if (tot != 0) begin
+      $display("[core%0d] cycles per state (not idle: %0d)", CORE_ID, tot);
+      for (int i = 0; i < 16; i++)
+        if (prof_cycles[i] != 0) begin
+          st = state_e'(i);
+          $display("[core%0d]   %-16s %9d  %5.1f %%", CORE_ID, st.name(),
+                   prof_cycles[i], 100.0 * real'(prof_cycles[i]) / real'(tot));
+        end
+    end
+  end
+`endif
 
 endmodule : accel_core

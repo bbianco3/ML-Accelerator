@@ -37,6 +37,15 @@ pc_copy2d_one:
   hcpy2d a0, a1, a2
   ecall
 
+// tile_copy(a0 = dst, a1 = src, a2 = stride): mld tr0 from src, mst to dst.
+// With stride = one bus beat and src in HBM, the mld is a single read burst.
+ACCEL_KERNEL(tile_copy)
+  .globl pc_tile_mld
+pc_tile_mld:
+  mld   tr0, a1, a2
+  mst   tr0, a0, a2
+  ecall
+
 // copy_one(a0 = dst, a1 = src, a2 = n): a single hcpy (fault and timing tests)
 ACCEL_KERNEL(copy_one)
   .globl pc_copy_one

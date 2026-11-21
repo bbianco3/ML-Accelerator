@@ -176,6 +176,7 @@ module accel_top
     logic [31:0]             req_addr;
     logic [HBM_DATA_W-1:0]   req_wdata;
     logic [HBM_DATA_W/8-1:0] req_wstrb;
+    logic [7:0]              req_len, h_req_len;   // read burst: beats - 1
     logic                    resp_valid, resp_err;
     logic [HBM_DATA_W-1:0]   resp_rdata;
     // scratchpad router <-> AXI master
@@ -207,17 +208,19 @@ module accel_top
       .mem_req_valid (req_valid),  .mem_req_ready (req_ready),
       .mem_req_write (req_write),  .mem_req_addr  (req_addr),
       .mem_req_wdata (req_wdata),  .mem_req_wstrb (req_wstrb),
+      .mem_req_len   (req_len),
       .mem_resp_valid(resp_valid), .mem_resp_rdata(resp_rdata),
       .mem_resp_err  (resp_err)
     );
 
     accel_spad #(.HBM_DATA_W(HBM_DATA_W), .SPAD_KB(SPAD_KB)) u_spad (
       .clk, .rst_n,
-      .req_valid, .req_ready, .req_write, .req_addr, .req_wdata, .req_wstrb,
+      .req_valid, .req_ready, .req_write, .req_addr, .req_wdata, .req_wstrb, .req_len,
       .resp_valid, .resp_rdata, .resp_err,
       .hbm_req_valid (h_req_valid),  .hbm_req_ready (h_req_ready),
       .hbm_req_write (h_req_write),  .hbm_req_addr  (h_req_addr),
       .hbm_req_wdata (h_req_wdata),  .hbm_req_wstrb (h_req_wstrb),
+      .hbm_req_len   (h_req_len),
       .hbm_resp_valid(h_resp_valid), .hbm_resp_rdata(h_resp_rdata),
       .hbm_resp_err  (h_resp_err)
     );
@@ -228,6 +231,7 @@ module accel_top
       .clk, .rst_n,
       .req_valid(h_req_valid), .req_ready(h_req_ready), .req_write(h_req_write),
       .req_addr(h_req_addr), .req_wdata(h_req_wdata), .req_wstrb(h_req_wstrb),
+      .req_len(h_req_len),
       .resp_valid(h_resp_valid), .resp_rdata(h_resp_rdata), .resp_err(h_resp_err),
       .m_axi_awid(a_awid[i]), .m_axi_awaddr(a_awaddr[i]), .m_axi_awlen(a_awlen[i]),
       .m_axi_awsize(a_awsize[i]), .m_axi_awburst(a_awburst[i]),

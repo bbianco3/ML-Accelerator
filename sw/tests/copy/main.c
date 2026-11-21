@@ -10,8 +10,8 @@
 #include "bf16.h"
 #include "runtime.h"
 
-extern void copy_jobs(void), copy_one(void), copy2d_jobs(void), copy2d_one(void);
-extern char pc_copy_one[], pc_copy2d_one[];
+extern void copy_jobs(void), copy_one(void), copy2d_jobs(void), copy2d_one(void), tile_copy(void);
+extern char pc_copy_one[], pc_copy2d_one[], pc_tile_mld[];
 
 #define SLOT     192u                 // destination slot (bytes)
 #define SRC_LEN  1024u                // shared source buffer (bytes)
@@ -164,6 +164,43 @@ int main(void) {
     int ok = (st & ACCEL_STATUS_ERROR) && ACCEL_STATUS_CAUSE(st) == ACCEL_ERR_MISALIGNED &&
              accel_rd(ACCEL_ERR_PC) == (uint32_t)(uintptr_t)pc_copy2d_one;
     printf("hcpy2d odd stride: %s\n", ok ? "misaligned, ok" : "WRONG");
+    if (!ok) errors++;
+    accel_wr(ACCEL_STATUS, ACCEL_STATUS_DONE | ACCEL_STATUS_ERROR);
+  }
+
+  // ---- 2c. mld read bursts: a whole tile of consecutive rows from HBM ----
+  // stride = one row (MAT_DIM*2 bytes): when that is also one bus beat, the
+  // core reads the tile with one burst, unless it would cross a 4 KiB page.
+  if (cfg.num_mxus > 0) {
+    const uint32_t D = cfg.mat_dim, rb = D * 2, tb = D * rb;
+    uint8_t *page = hbm_alloc(3 * 4096, 4096);
+    uint8_t *out = hbm_alloc(tb, HBM_ALIGN);
+    for (uint32_t i = 0; i < 3 * 4096; i++) page[i] = (uint8_t)rand_u32();
+    // offsets: page aligned, mid page, ending exactly at a page end, crossing one
+    const uint32_t offs[] = {0, 1024 + rb, 4096 - tb, 4096 - tb + rb, 8192 - rb};
+    bad = 0;
+    for (uint32_t o = 0; o < sizeof(offs) / sizeof(offs[0]) && !bad; o++) {
+      memset(out, 0, tb);
+      uint32_t a[] = {(uint32_t)(uintptr_t)out, (uint32_t)(uintptr_t)(page + offs[o]), rb};
+      st = accel_run(tile_copy, a, 3);
+      if (st & ACCEL_STATUS_ERROR) { printf("tile copy faulted\n"); return 1; }
+      for (uint32_t i = 0; i < tb; i++)
+        if (out[i] != page[offs[o] + i]) {
+          printf("mld burst: offset %u: byte %u is 0x%02x, expected 0x%02x\n", offs[o], i, out[i],
+                 page[offs[o] + i]);
+          bad = 1;
+          break;
+        }
+    }
+    printf("mld tile bursts: %s\n", bad ? "FAILED" : "ok");
+    errors += bad;
+    // a burst outside HBM: bus error, reported at the mld, after all beats return
+    uint32_t a[] = {(uint32_t)(uintptr_t)out, HBM_BASE + HBM_SIZE, rb};
+    accel_launch(tile_copy, a, 3);
+    st = accel_wait();
+    int ok = (st & ACCEL_STATUS_ERROR) && ACCEL_STATUS_CAUSE(st) == ACCEL_ERR_BUS &&
+             accel_rd(ACCEL_ERR_PC) == (uint32_t)(uintptr_t)pc_tile_mld;
+    printf("mld burst outside HBM: %s\n", ok ? "bus error, ok" : "WRONG");
     if (!ok) errors++;
     accel_wr(ACCEL_STATUS, ACCEL_STATUS_DONE | ACCEL_STATUS_ERROR);
   }
