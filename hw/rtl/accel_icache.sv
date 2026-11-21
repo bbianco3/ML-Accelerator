@@ -40,6 +40,12 @@ module accel_icache #(
   output logic                  hit,
   output logic [31:0]           insn,
 
+  // a second lookup, for the next sequential instruction (pc + 4), so the
+  // core can go from one instruction straight to the next
+  input  logic [31:0]           pc2,
+  output logic                  hit2,
+  output logic [31:0]           insn2,
+
   // fill after a miss
   input  logic                  fill_en,
   input  logic [31:0]           fill_pc,
@@ -74,6 +80,13 @@ module accel_icache #(
   assign word = pc[2 +: WORD_W];
   assign hit  = valid[idx] && (tag[idx] == pc[TAG_LO +: TAG_W]);
   assign insn = data[idx][32*word +: 32];
+
+  logic [IDX_W-1:0]  idx2;
+  logic [WORD_W-1:0] word2;
+  assign idx2  = pc2[IDX_LO +: IDX_W];
+  assign word2 = pc2[2 +: WORD_W];
+  assign hit2  = valid[idx2] && (tag[idx2] == pc2[TAG_LO +: TAG_W]);
+  assign insn2 = data[idx2][32*word2 +: 32];
 
   //---------------------------------------------------------------------------
   // Fill and flush

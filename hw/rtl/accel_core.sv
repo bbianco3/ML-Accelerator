@@ -200,6 +200,9 @@ module accel_core
   //===========================================================================
   logic        ic_hit;
   logic [31:0] ic_insn;
+  logic        ic_hit2;                           // pc + 4 is in the cache
+  logic [31:0] ic_insn2;                          // ... and this is it
+  logic        fast_next;                         // go to pc + 4 without S_FETCH
 
   accel_icache #(.LINES(ICACHE_LINES), .HBM_DATA_W(HBM_DATA_W)) u_icache (
     .clk, .rst_n,
@@ -207,10 +210,20 @@ module accel_core
     .pc        (pc),
     .hit       (ic_hit),
     .insn      (ic_insn),
+    .pc2       (pc + 32'd4),
+    .hit2      (ic_hit2),
+    .insn2     (ic_insn2),
     .fill_en   ((state == S_FETCH_WAIT) && mem_resp_valid && !mem_resp_err),
     .fill_pc   (pc),
     .fill_data (mem_resp_rdata)
   );
+
+  // Fetch overlap: when an instruction finishes and the next one is pc + 4
+  // and already in the cache, it is loaded into insn right away and the core
+  // goes straight back to S_EXEC, skipping the S_FETCH cycle. (S_FETCH also
+  // checks abort, so this does too.) Taken branches and jumps still go
+  // through S_FETCH.
+  assign fast_next = ic_hit2 && !abort;
 
   //===========================================================================
   // Vector unit
@@ -318,6 +331,7 @@ module accel_core
 
   logic [31:0]     alu_b, alu_out;
   logic            br_taken;
+  logic            ex_seq;          // the next instruction is pc + 4 (no jump, no taken branch)
   logic [4:0]      shamt;
 
   always_comb begin
@@ -345,6 +359,9 @@ module accel_core
       default: br_taken = (rs1v >= rs2v);                    // bgeu
     endcase
   end
+
+  assign ex_seq = !((opcode == OPC_JAL) || (opcode == OPC_JALR) ||
+                    ((opcode == OPC_BRANCH) && br_taken));
 
   always_comb begin
     ex_next    = 1'b0;
@@ -942,7 +959,11 @@ module accel_core
             if (ex_vl_we) vl <= ex_vl_val;
             pc          <= ex_pc;
             instret_cnt <= instret_cnt + 64'd1;
-            state       <= S_FETCH;
+            if (ex_seq && fast_next) begin          // falls through: next insn is cached
+              insn  <= ic_insn2;
+              state <= S_EXEC;
+            end else
+              state <= S_FETCH;
           end
         end
 
@@ -955,7 +976,8 @@ module accel_core
             // (vector loads are written by the VPU: vpu_ld_en)
             pc          <= pc + 32'd4;
             instret_cnt <= instret_cnt + 64'd1;
-            state       <= S_FETCH;
+            if (fast_next) insn <= ic_insn2;
+            state       <= fast_next ? S_EXEC : S_FETCH;
           end
         end
 
@@ -964,7 +986,8 @@ module accel_core
           if (vpu_red_done) begin
             pc          <= pc + 32'd4;
             instret_cnt <= instret_cnt + 64'd1;
-            state       <= S_FETCH;
+            if (fast_next) insn <= ic_insn2;
+            state       <= fast_next ? S_EXEC : S_FETCH;
           end
         end
 
@@ -985,7 +1008,8 @@ module accel_core
             if (mrow_rx == ROW_IDX_W'(MAT_DIM - 1) && !mem_resp_err && !mr_err) begin
               pc          <= pc + 32'd4;            // that was the last row
               instret_cnt <= instret_cnt + 64'd1;
-              state       <= S_FETCH;
+              if (fast_next) insn <= ic_insn2;
+              state       <= fast_next ? S_EXEC : S_FETCH;
             end
           end
         end
@@ -995,7 +1019,8 @@ module accel_core
           if (!mxu_busy) begin
             pc          <= pc + 32'd4;
             instret_cnt <= instret_cnt + 64'd1;
-            state       <= S_FETCH;
+            if (fast_next) insn <= ic_insn2;
+            state       <= fast_next ? S_EXEC : S_FETCH;
           end
         end
 
@@ -1004,7 +1029,8 @@ module accel_core
           if (!vpu_ar_busy) begin
             pc          <= pc + 32'd4;
             instret_cnt <= instret_cnt + 64'd1;
-            state       <= S_FETCH;
+            if (fast_next) insn <= ic_insn2;
+            state       <= fast_next ? S_EXEC : S_FETCH;
           end
         end
 
@@ -1029,7 +1055,8 @@ module accel_core
               if (cp_rows == 8'd1) begin            // ... and the last run
                 pc          <= pc + 32'd4;
                 instret_cnt <= instret_cnt + 64'd1;
-                state       <= S_FETCH;
+                if (fast_next) insn <= ic_insn2;
+                state       <= fast_next ? S_EXEC : S_FETCH;
               end else begin                        // next run (overrides src/left)
                 cp_rows <= cp_rows - 8'd1;
                 cp_srow <= cp_srow + 32'(cp_stride);
@@ -1047,7 +1074,8 @@ module accel_core
           if (barrier_go) begin
             pc          <= pc + 32'd4;
             instret_cnt <= instret_cnt + 64'd1;
-            state       <= S_FETCH;
+            if (fast_next) insn <= ic_insn2;
+            state       <= fast_next ? S_EXEC : S_FETCH;
           end
         end
 
