@@ -20,14 +20,14 @@ BUILD := $(REPO)/build
 SHELL := /bin/bash -o pipefail
 
 # ---------------- hardware configuration (RTL parameters) ----------------
-VLEN         ?= 256
+VLEN         ?= 128
 MAT_DIM      ?= 16
 NUM_TREGS    ?= 2
 NUM_ACCS     ?= 1
 MXU_ROWS     ?= 4
 HBM_DATA_W   ?= 256
 ICACHE_LINES ?= 16
-NUM_CORES    ?= 2
+NUM_CORES    ?= 4
 SPAD_KB      ?= 16
 # Cores 0 .. NUM_VPUS-1 have a vector unit, cores 0 .. NUM_MXUS-1 a matrix unit.
 NUM_VPUS     ?= $(NUM_CORES)
